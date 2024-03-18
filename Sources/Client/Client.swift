@@ -143,7 +143,7 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
     }
 }
 
-func connect(_ client: MessageClient) async throws {
+func connect(_ client: borrowing MessageClient) async throws {
     let size = TerminalSize.size()
     let clientMsg = ClientMessage(
         connect: client.address, maxX: size.x, maxY: size.y)

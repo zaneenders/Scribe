@@ -2,7 +2,7 @@ import NIOCore
 import NIOPosix
 import Shared
 
-public struct MessageClient /* : ~Copyable */ {
+public struct MessageClient: ~Copyable {
 
     private let channel: any Channel
 
