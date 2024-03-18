@@ -1,3 +1,5 @@
+import Scribe
+
 public struct ClientAction: Action {
     let key: AsciiKeyCode
 }

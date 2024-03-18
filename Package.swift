@@ -15,12 +15,16 @@ let package = Package(
     ],
     targets: [
         // Examples
+        .target(name: "Programs", dependencies: ["Scribe"]),
         .executableTarget(
             name: "Client",
             dependencies: ["Scribe"]),
         .executableTarget(
             name: "Server",
-            dependencies: ["Scribe"]),
+            dependencies: [
+                "Scribe",
+                "Programs",
+            ]),
         .target(
             name: "Scribe",
             dependencies: [

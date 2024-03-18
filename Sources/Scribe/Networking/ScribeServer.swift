@@ -5,12 +5,14 @@ import Shared
 
 public protocol ScribeServer {
     init()
+    var programs: [any Program.Type] { get }
 }
 
 extension ScribeServer {
     public static func main() async throws {
         let s = self.init()
         // Just always run in the same location
+        let programs = s.programs
         let home = FileManager.default.homeDirectoryForCurrentUser
         FileManager.default.changeCurrentDirectoryPath(home.path + "/.scribe")
         let args = CommandLine.arguments
@@ -66,6 +68,7 @@ extension ScribeServer {
                                 try await connectionChannel.executeThenClose {
                                     inbound, outbound in
                                     let client = ClientConnction(
+                                        programs,
                                         "\(clientAddress)",
                                         inbound, outbound)
                                     await client.handleConnection()

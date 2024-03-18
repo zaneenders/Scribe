@@ -15,7 +15,7 @@ enum ScribeCommand {
 
 actor Scribe {
 
-    private (set) var state: State
+    private(set) var state: State
     private var _state: IntenralState
     private var page: Page
     private var avaible: [any Program.Type]

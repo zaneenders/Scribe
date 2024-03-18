@@ -10,6 +10,7 @@ actor ClientConnction {
     private let scribe: Scribe
 
     init(
+        _ programs: [any Program.Type],
         _ address: String,
         _ inbound: NIOAsyncChannelInboundStream<String>,
         _ outbound: NIOAsyncChannelOutboundWriter<String>
@@ -17,7 +18,7 @@ actor ClientConnction {
         self.address = address
         self.outbound = outbound
         self.inbound = inbound
-        self.scribe = Scribe([ClientProgram.self])
+        self.scribe = Scribe(programs)
     }
 
     func handleConnection() async {
