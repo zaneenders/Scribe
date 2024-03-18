@@ -25,19 +25,38 @@ public actor ClientProgram: Program {
     public func command(
         with action: Command<ClientAction>, _ maxX: Int, _ maxY: Int
     ) async {
-        switch action {
-        case .hello:
-            ()
-        case .action(.key(.ctrlC)):
-            self.status = .close
-        default:
-            do {
-                let box = try await Box({ _ in })
-            } catch {
-                print("\(self) unable to create \(Box.self)")
+        switch (self.status, self.state, action) {
+        case (.working, .select, .action(.key(let k))):
+            switch k {
+            case .ctrlC:
+                self.status = .close
+            case .ctrlJ:
+                do {
+                    let host = "::1"
+                    let port = 42169
+                    let box = try await Box(host: host, port: port, { _ in })
+                    let clientMsg = ClientMessage(
+                        connect: "IDK", maxX: maxX, maxY: maxY)
+                    try await box.client.write(msg: clientMsg.json)
+                    self.state = .connected(box, 1)
+                } catch {
+                    print("\(self) unable to create \(Box.self)")
+                }
+            default:
+                self.frame = page.renderWindow(maxX, maxY)
             }
+        case (.working, .connected(let b, let i), .action(.key(let k))):
+            let clientMsg = ClientMessage(
+                ascii: k.rawValue, maxX: maxX, maxY: maxY)
+            do {
+                try await b.client.write(msg: clientMsg.json)
+            } catch {
+                print("failed to send: \(clientMsg) to \(b)")
+                self.state = .select
+            }
+        default:
+            self.frame = page.renderWindow(maxX, maxY)
         }
-        self.frame = page.renderWindow(maxX, maxY)
     }
 
     public func getFrame() async -> Frame {
