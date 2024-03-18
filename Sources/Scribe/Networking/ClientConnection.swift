@@ -3,10 +3,12 @@ import NIOPosix
 import Shared
 
 actor ClientConnction {
+
     private let outbound: NIOAsyncChannelOutboundWriter<String>
     private let inbound: NIOAsyncChannelInboundStream<String>
     private let address: String
     private let scribe = Scribe()
+
     init(
         _ address: String,
         _ inbound: NIOAsyncChannelInboundStream<String>,
@@ -19,7 +21,6 @@ actor ClientConnction {
 
     func handleConnection() async {
         do {
-            let client = await ClientProgram()
             for try await inboundData in inbound {
                 let msg: ServerMessage
                 let clientMsg = ClientMessage(json: inboundData)
@@ -31,12 +32,11 @@ actor ClientConnction {
                         outbound.finish()
                         return
                     }
-                    let m = ClientProgram.processKey(ascii)
-                    let frame = await client.getFrame(with: m, x, y)
-                    switch await client.getStatus() {
-                    case .working:
+                    let frame = await self.scribe.getFrame(ascii, x, y)
+                    switch await self.scribe.state {
+                    case .running:
                         msg = ServerMessage(frame: frame)
-                    case .close:
+                    case .shutdown:
                         msg = ServerMessage()
                         try await outbound.write(msg.json)
                         outbound.finish()
