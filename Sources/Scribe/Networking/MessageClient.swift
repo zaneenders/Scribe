@@ -6,6 +6,10 @@ public struct MessageClient: ~Copyable {
 
     private let channel: any Channel
 
+    public var address: String {
+        "\(channel.localAddress!)"
+    }
+
     public func send(msg: String) async throws -> String {
         do {
             let p: EventLoopPromise<String> = channel.eventLoop.makePromise()

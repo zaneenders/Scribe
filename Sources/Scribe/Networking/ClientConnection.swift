@@ -23,14 +23,14 @@ actor ClientConnction {
                 let msg: ServerMessage
                 let clientMsg = ClientMessage(json: inboundData)
                 switch clientMsg.command {
-                case .byte(let b, maxX: _, maxY: _):
+                case let .byte(b, maxX: x, maxY: y):
                     if "\(b)" == "3" {
                         msg = ServerMessage()
                     } else {
-                        msg = ServerMessage(msg: "Server: \(inboundData)")
+                        msg = ServerMessage(frame: Frame(x, y))
                     }
-                case .connect(let c, maxX: _, maxY: _):
-                    msg = ServerMessage(msg: "\(c)")
+                case let .connect(c, maxX: x, maxY: y):
+                    msg = ServerMessage(frame: Frame(x, y))
                 }
                 try await outbound.write(msg.json)
             }

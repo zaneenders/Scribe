@@ -1,15 +1,30 @@
 import Foundation
 import Scribe
 
+extension Frame {
+    func printASCII() {
+        var out = ""
+        for y in 1...maxY {
+            for x in 1...maxX {
+                out += String(frame[Location(x, y)]!)
+            }
+            if y != maxY {
+                out += "\n"
+            }
+        }
+        print(clearCode, terminator: "")
+        print(out, terminator: "")
+    }
+}
+
 @MainActor
 private func render(_ msg: ServerMessage) {
     switch msg.type {
     case .disconnect:
         cleanup()
         exit(0)
-    case .message(let m):
-        print(clearCode, terminator: "")
-        print(m)
+    case .frame(let f):
+        f.printASCII()
     }
 }
 
@@ -104,6 +119,13 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
     print(AnsiCode.Cursor.hide.rawValue, terminator: "")
     print(clearCode, terminator: "")
     print(AnsiCode.goTo(0, 0))
+    do {
+        try await connect(client)
+    } catch {
+        cleanup()
+        print(error.localizedDescription)
+        exit(0)
+    }
     let std: FileHandle = FileHandle.standardInput
     for try await byte in std.asyncByteIterator() {
         let size = TerminalSize.size()
@@ -119,4 +141,13 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
             exit(0)
         }
     }
+}
+
+func connect(_ client: borrowing MessageClient) async throws {
+    let size = TerminalSize.size()
+    let clientMsg = ClientMessage(
+        connect: client.address, maxX: size.x, maxY: size.y)
+    let r = try await client.send(msg: clientMsg.json)
+    let serverMsg = ServerMessage(json: r)
+    await render(serverMsg)
 }

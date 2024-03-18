@@ -1,15 +1,15 @@
 import Foundation
 
 public enum MessageType: Codable, Sendable {
-    case message(String)
+    case frame(Frame)
     case disconnect
 }
 
 public struct ServerMessage: Codable, Sendable {
     public let type: MessageType
 
-    public init(msg: String) {
-        self.type = .message(msg)
+    public init(frame: Frame) {
+        self.type = .frame(frame)
     }
 
     public init() {
