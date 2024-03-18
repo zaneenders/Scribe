@@ -3,6 +3,10 @@ import Scribe
 
 extension Frame {
     func printASCII() {
+        let size = TerminalSize.size()
+        guard size.x == maxX && size.y == maxY else {
+            return
+        }
         var out = ""
         for y in 1...maxY {
             for x in 1...maxX {
