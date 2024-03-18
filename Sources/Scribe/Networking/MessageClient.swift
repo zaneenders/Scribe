@@ -7,7 +7,11 @@ public struct MessageClient /* : ~Copyable */ {
     private let channel: any Channel
 
     public var address: String {
-        "\(channel.localAddress!)"
+        if let addres = channel.localAddress {
+            return "\(addres)"
+        } else {
+            return "CLIENT ERROR"
+        }
     }
 
     public func send(msg: String) async throws -> String {

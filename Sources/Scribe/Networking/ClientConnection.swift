@@ -6,6 +6,7 @@ actor ClientConnction {
     private let outbound: NIOAsyncChannelOutboundWriter<String>
     private let inbound: NIOAsyncChannelInboundStream<String>
     private let address: String
+    private let scribe = Scribe()
     init(
         _ address: String,
         _ inbound: NIOAsyncChannelInboundStream<String>,
@@ -20,7 +21,6 @@ actor ClientConnction {
         do {
             let client = await ClientProgram()
             for try await inboundData in inbound {
-                print(inboundData)
                 let msg: ServerMessage
                 let clientMsg = ClientMessage(json: inboundData)
                 switch clientMsg.command {
@@ -37,7 +37,6 @@ actor ClientConnction {
                     case .working:
                         msg = ServerMessage(frame: frame)
                     case .close:
-
                         msg = ServerMessage()
                         try await outbound.write(msg.json)
                         outbound.finish()
