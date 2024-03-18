@@ -7,7 +7,7 @@ actor ClientConnction {
     private let outbound: NIOAsyncChannelOutboundWriter<String>
     private let inbound: NIOAsyncChannelInboundStream<String>
     private let address: String
-    private let scribe = Scribe()
+    private let scribe: Scribe
 
     init(
         _ address: String,
@@ -17,6 +17,7 @@ actor ClientConnction {
         self.address = address
         self.outbound = outbound
         self.inbound = inbound
+        self.scribe = Scribe([ClientProgram.self])
     }
 
     func handleConnection() async {
@@ -32,7 +33,7 @@ actor ClientConnction {
                         outbound.finish()
                         return
                     }
-                    let frame = await self.scribe.getFrame(ascii, x, y)
+                    let frame = await self.scribe.getFrame(.key(ascii), x, y)
                     switch await self.scribe.state {
                     case .running:
                         msg = ServerMessage(frame: frame)
@@ -45,7 +46,8 @@ actor ClientConnction {
                     }
                 case let .connect(c, maxX: x, maxY: y):
                     print(c)
-                    msg = ServerMessage(frame: Frame(x, y))
+                    let frame = await self.scribe.getFrame(.hello, x, y)
+                    msg = ServerMessage(frame: frame)
                 }
                 try await outbound.write(msg.json)
             }
