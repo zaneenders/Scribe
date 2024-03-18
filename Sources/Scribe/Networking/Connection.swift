@@ -31,7 +31,7 @@ actor Connection {
     }
 
     private func current() async -> Frame {
-        return await self.scribe.frame
+        return await self.scribe.frame()
     }
 
     func mainloop() async throws {

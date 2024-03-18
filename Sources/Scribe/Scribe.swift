@@ -23,8 +23,17 @@ actor Scribe {
     private var _state: IntenralState
 
     private var page: Page
+    private var x: Int = 80
+    private var y: Int = 24
 
-    private(set) var frame: Frame = Frame(80, 24)
+    func frame() async -> Frame {
+        switch self._state {
+        case .ready:
+            page.renderWindow(x, y)
+        case .running(let p):
+            await p.getFrame()
+        }
+    }
 
     init(_ address: String, _ programs: [any Program.Type]) {
         self.address = address
@@ -41,6 +50,8 @@ actor Scribe {
     }
 
     func command(_ cmd: ScribeCommand, _ x: Int, _ y: Int) async {
+        self.x = x
+        self.y = y
         switch (self.state, self._state, cmd) {
         case (.running, .ready, .key(.ctrlC)):
             self.state = .shutdown
@@ -48,14 +59,13 @@ actor Scribe {
             // start selected program
             let p = await programs[selected].init()
             await sendHello(p, x, y: y)
-            self.frame = await p.getFrame()
             print("starting: \(p)")
             self._state = .running(p)
         case (.running, .running(let p), .key(let k)):
             await sendCommand(p, k, x, y)
             switch await p.getStatus() {
             case .working:
-                self.frame = await p.getFrame()
+                ()
             case .close:
                 print("shutting down: \(p)")
                 self._state = .ready
@@ -64,7 +74,6 @@ actor Scribe {
                     data.append(["\(prog)"])
                 }
                 self.page = Page(data)
-                self.frame = page.renderWindow(x, y)
             }
         default:
             var data: [[String]] = [["Scribe", "[\(address)]", "\(cmd)"]]
@@ -72,7 +81,6 @@ actor Scribe {
                 data.append(["\(prog)"])
             }
             self.page = Page(data)
-            self.frame = page.renderWindow(x, y)
         }
     }
 

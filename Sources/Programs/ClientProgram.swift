@@ -14,6 +14,8 @@ public actor ClientProgram: Program {
 
     private(set) var status: Status = .working
     private(set) var frame: Frame = Frame(80, 24)
+    private var x: Int = 80
+    private var y: Int = 24
 
     private var page: Page
     private var state: State = .select
@@ -22,19 +24,34 @@ public actor ClientProgram: Program {
         self.page = Page([["ClientProgram"], ["Not Connected"]])
     }
 
+    private func handle(_ msg: String) {
+        let s = ServerMessage(json: msg)
+        switch s.type {
+        case .disconnect:
+            self.state = .select
+            self.frame = self.page.renderWindow(self.x, self.y)
+        case .frame(let f):
+            self.frame = f
+        }
+    }
+
     public func command(
         with action: Command<ClientAction>, _ maxX: Int, _ maxY: Int
     ) async {
+        self.x = maxX
+        self.y = maxY
         switch (self.status, self.state, action) {
         case (.working, .select, .action(.key(let k))):
             switch k {
             case .ctrlC:
                 self.status = .close
+                self.state = .select
+                self.frame = page.renderWindow(maxX, maxY)
             case .ctrlJ:
                 do {
                     let host = "::1"
                     let port = 42169
-                    let box = try await Box(host: host, port: port, { _ in })
+                    let box = try await Box(host: host, port: port, handle(_:))
                     let clientMsg = ClientMessage(
                         connect: "IDK", maxX: maxX, maxY: maxY)
                     try await box.client.write(msg: clientMsg.json)
