@@ -2,44 +2,67 @@ import Scribe
 
 public enum ClientAction: Action {
     case key(AsciiKeyCode)
-    case hello
 }
 
 public actor ClientProgram: Program {
+
     public typealias ActionType = ClientAction
 
-    var page: Page
-    var status: Status = .working
+    public static func processKey(_ key: InputType) -> Command<ClientAction> {
+        .action(.key(key))
+    }
+
+    private(set) var status: Status = .working
+    private(set) var frame: Frame = Frame(80, 24)
+
+    private var page: Page
     private var state: State = .select
 
     public init() async {
         self.page = Page([["ClientProgram"], ["Not Connected"]])
     }
 
-    private enum State {
-        case select
-        case connected(Box, Int)
+    public func command(
+        with action: Command<ClientAction>, _ maxX: Int, _ maxY: Int
+    ) async {
+        switch action {
+        case .hello:
+            ()
+        case .action(.key(.ctrlC)):
+            self.status = .close
+        default:
+            do {
+                let box = try await Box({ _ in })
+            } catch {
+                print("\(self) unable to create \(Box.self)")
+            }
+        }
+        self.frame = page.renderWindow(maxX, maxY)
     }
 
-    private final class Box {
-        init(host: String = "::1", port: Int = 42169) async throws {
-            self.client = try await MessageClient(
-                host: host, port: port, { _ in })
-        }
-        let client: MessageClient
+    public func getFrame() async -> Frame {
+        self.frame
     }
 
     public func getStatus() async -> Status {
         self.status
     }
+}
 
-    public func getFrame(
-        with action: ClientAction, _ maxX: Int, _ maxY: Int
-    ) async -> Frame {
-        return page.renderWindow(maxX, maxY)
-    }
+private enum State {
+    case select
+    case connected(Box, Int)
+}
 
-    public static func processKey(_ key: InputType) -> ClientAction {
-        ClientAction.key(key)
+private final class Box {
+
+    let client: MessageClient
+
+    init(
+        host: String = "::1", port: Int = 42169,
+        _ handle: @escaping (String) -> Void
+    ) async throws {
+        self.client = try await MessageClient(
+            host: host, port: port, handle)
     }
 }

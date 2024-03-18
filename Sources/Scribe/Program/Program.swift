@@ -2,13 +2,18 @@ public typealias InputType = AsciiKeyCode
 
 public protocol Action: Sendable {}
 
+public enum Command<Action> {
+    case hello
+    case action(Action)
+}
+
 extension Program {
     public static var name: String {
         "\(self)"
     }
 }
 
-public protocol Program: Sendable {
+public protocol Program<ActionType>: Sendable {
     associatedtype ActionType: Action
     init() async
 
@@ -17,13 +22,12 @@ public protocol Program: Sendable {
     // only use action types
     // This also separates the preferences of what key maps
     // to what action
-    static func processKey(_ key: InputType) -> ActionType
-
-    func getFrame(
-        with action: ActionType, _ maxX: Int, _ maxY: Int
-    ) async -> Frame
+    static func processKey(_ key: InputType) -> Command<ActionType>
 
     func getStatus() async -> Status
+    func command(with action: Command<ActionType>, _ maxX: Int, _ maxY: Int)
+        async
+    func getFrame() async -> Frame
 }
 
 public enum Status: Sendable {
