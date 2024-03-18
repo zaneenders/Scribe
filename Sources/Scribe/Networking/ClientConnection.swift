@@ -18,7 +18,7 @@ actor ClientConnction {
         self.address = address
         self.outbound = outbound
         self.inbound = inbound
-        self.scribe = Scribe(programs)
+        self.scribe = Scribe(address, programs)
     }
 
     func handleConnection() async {

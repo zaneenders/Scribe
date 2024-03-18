@@ -20,12 +20,14 @@ actor Scribe {
     private var page: Page
     private var avaible: [any Program.Type]
     private var selected = 0
+    private let address: String
 
-    init(_ programs: [any Program.Type]) {
+    init(_ address: String, _ programs: [any Program.Type]) {
+        self.address = address
         self.avaible = programs
         self.state = .running
         self._state = .ready
-        var data: [[String]] = [["Scribe"]]
+        var data: [[String]] = [["Scribe", "[\(address)]"]]
         for prog in programs {
             data.append(["\(prog)"])
         }
@@ -42,13 +44,23 @@ actor Scribe {
                 switch key {
                 case .ctrlC:
                     self.state = .shutdown
-                default:
+                case .ctrlJ:
                     if avaible.count > selected {
                         let p = await avaible[selected].init()
+                        // TODO Send a hello command 1st
                         let frame = await helper(key, x, y, program: p)
                         self._state = .running(p)
                         return frame
                     }
+                default:
+                    var data: [[String]] = [
+                        ["Scribe", "[\(address)]", "\(key)"]
+                    ]
+                    for prog in avaible {
+                        data.append(["\(prog)"])
+                    }
+                    self.page = Page(data)
+
                 }
                 return page.renderWindow(x, y)
             case .running(let p):
