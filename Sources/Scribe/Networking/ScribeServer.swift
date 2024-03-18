@@ -54,37 +54,29 @@ extension ScribeServer {
                         )
                     }
                 }
+        // Crash if server does not have local address
         let localAddress = asyncChannel.channel.localAddress!
         print("\(Self.self) running: \(localAddress)")
         try await withThrowingDiscardingTaskGroup { group in
             try await asyncChannel.executeThenClose { inbound in
-                for try await connectionChannel in inbound {
+                for try await connection in inbound {
                     group.addTask {
-                        if let clientAddress = connectionChannel.channel
-                            .remoteAddress
-                        {
-                            do {
-                                print("\(clientAddress): Connected")
-                                try await connectionChannel.executeThenClose {
-                                    inbound, outbound in
-                                    let client = ClientConnction(
-                                        programs,
-                                        "\(clientAddress)",
-                                        inbound, outbound)
-                                    await client.handleConnection()
-                                    outbound.finish()
-                                }
-                                print("\(clientAddress): Disconnected")
-                            } catch {
-                                fatalError("ConnectionError: \(error)")
-                            }
-                        } else {
-                            print(
-                                "failed to get clientAddress \(connectionChannel)"
-                            )
-                        }
+                        try await _handleConnection(connection, programs)
                     }
                 }
+            }
+        }
+    }
+
+    private static func _handleConnection(
+        _ channel: NIOAsyncChannel<String, String>,
+        _ programs: [any Program.Type]
+    ) async throws {
+        try await channel.executeThenClose { inbound, outbound in
+            if let address = channel.channel.remoteAddress {
+                let connection = Connection(
+                    programs, "\(address)", inbound, outbound)
+                try await connection.mainloop()
             }
         }
     }

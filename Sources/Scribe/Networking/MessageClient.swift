@@ -14,11 +14,9 @@ public struct MessageClient: ~Copyable {
         }
     }
 
-    public func send(msg: String) async throws -> String {
+    public func write(msg: String) async throws {
         do {
-            let p: EventLoopPromise<String> = channel.eventLoop.makePromise()
-            try await channel.writeAndFlush((msg, p)).get()
-            return try await p.futureResult.get()
+            try await channel.writeAndFlush(msg)
         } catch {
             throw ClientError.send("\(error)")
         }
@@ -28,7 +26,10 @@ public struct MessageClient: ~Copyable {
         try? await channel.close().get()
     }
 
-    public init(host: String = "::1", port: Int = 42069) async throws {
+    public init(
+        host: String = "::1", port: Int = 42069,
+        _ handle: @escaping (String) -> Void
+    ) async throws {
         let eventGroup: MultiThreadedEventLoopGroup = .singleton
         do {
             self.channel = try await ClientBootstrap(group: eventGroup)
@@ -37,7 +38,7 @@ public struct MessageClient: ~Copyable {
                 )
                 .channelInitializer { channel in
                     channel.eventLoop.makeCompletedFuture {
-                        let msgHandler = MessageHandler<String, String>()
+                        let msgHandler = MessageDelgator<String, String>(handle)
                         let msgDecoder = ByteToMessageHandler(MessageReader())
                         let msgEncoder = MessageToByteHandler(MessageReader())
                         try channel.pipeline.syncOperations.addHandlers(
@@ -59,6 +60,38 @@ extension MessageClient {
     public enum ClientError: Error {
         case send(String)
         case connect(String)
+    }
+}
+
+extension MessageClient {
+
+    private final class MessageDelgator<Request, Response>:
+        ChannelDuplexHandler
+    {
+
+        typealias InboundOut = Never
+        typealias InboundIn = Response
+        typealias OutboundOut = Request
+        typealias OutboundIn = Request
+
+        private let handle: (Response) -> Void
+
+        init(_ handle: @escaping (Response) -> Void) {
+            self.handle = handle
+        }
+
+        public func write(
+            context: ChannelHandlerContext, data: NIOAny,
+            promise: EventLoopPromise<Void>?
+        ) {
+            let request = self.unwrapOutboundIn(data)
+            context.write(self.wrapOutboundOut(request), promise: promise)
+        }
+
+        public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+            let response = self.unwrapInboundIn(data)
+            handle(response)
+        }
     }
 }
 

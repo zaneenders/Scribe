@@ -28,6 +28,12 @@ private func render(_ msg: ServerMessage) {
     }
 }
 
+@MainActor
+private func handle(_ msg: String) {
+    let serverMsg = ServerMessage(json: msg)
+    render(serverMsg)
+}
+
 @main
 struct Client {
     public static func main() async {
@@ -42,7 +48,7 @@ struct Client {
             port = 42069
         }
         do {
-            let client = try await MessageClient(host: host, port: port)
+            let client = try await MessageClient(host: host, port: port, handle)
             try await mainLoop(client)
         } catch {
             print("failed to connect: \(error)")
@@ -68,7 +74,7 @@ private struct TerminalSize {
         } else {
             return TerminalSize(
                 x: Int(w.ws_col.magnitude),
-                y: Int(w.ws_row.magnitude))  // Ugh Alacrity
+                y: Int(w.ws_row.magnitude))
         }
     }
 }
@@ -132,9 +138,7 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
         do {
             let clientMsg = ClientMessage(
                 ascii: byte, maxX: size.x, maxY: size.y)
-            let r = try await client.send(msg: clientMsg.json)
-            let serverMsg = ServerMessage(json: r)
-            render(serverMsg)
+            try await client.write(msg: clientMsg.json)
         } catch {
             cleanup()
             print(error.localizedDescription)
@@ -147,7 +151,5 @@ func connect(_ client: borrowing MessageClient) async throws {
     let size = TerminalSize.size()
     let clientMsg = ClientMessage(
         connect: client.address, maxX: size.x, maxY: size.y)
-    let r = try await client.send(msg: clientMsg.json)
-    let serverMsg = ServerMessage(json: r)
-    await render(serverMsg)
+    try await client.write(msg: clientMsg.json)
 }
