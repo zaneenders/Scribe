@@ -131,7 +131,7 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
         let size = TerminalSize.size()
         do {
             let clientMsg = ClientMessage(
-                byte: byte, maxX: size.x, maxY: size.y)
+                ascii: byte, maxX: size.x, maxY: size.y)
             let r = try await client.send(msg: clientMsg.json)
             let serverMsg = ServerMessage(json: r)
             render(serverMsg)
@@ -143,7 +143,7 @@ private func mainLoop(_ client: consuming MessageClient) async throws {
     }
 }
 
-func connect(_ client: borrowing MessageClient) async throws {
+func connect(_ client: MessageClient) async throws {
     let size = TerminalSize.size()
     let clientMsg = ClientMessage(
         connect: client.address, maxX: size.x, maxY: size.y)

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum ClientCommand: Codable, Sendable {
-    case byte(UInt8, maxX: Int, maxY: Int)
+    case ascii(UInt8, maxX: Int, maxY: Int)
     case connect(String, maxX: Int, maxY: Int)
 }
 
@@ -9,8 +9,8 @@ public struct ClientMessage: Codable {
     public let command: ClientCommand
 
     /// maxX and maxY assume 1,1 base indexing
-    public init(byte: UInt8, maxX: Int, maxY: Int) {
-        self.command = .byte(byte, maxX: maxX, maxY: maxY)
+    public init(ascii: UInt8, maxX: Int, maxY: Int) {
+        self.command = .ascii(ascii, maxX: maxX, maxY: maxY)
     }
 
     public init(connect: String, maxX: Int, maxY: Int) {

@@ -2,7 +2,7 @@ import NIOCore
 import NIOPosix
 import Shared
 
-public struct MessageClient: ~Copyable {
+public struct MessageClient /* : ~Copyable */ {
 
     private let channel: any Channel
 
@@ -18,6 +18,10 @@ public struct MessageClient: ~Copyable {
         } catch {
             throw ClientError.send("\(error)")
         }
+    }
+
+    public func close() async {
+        try? await channel.close().get()
     }
 
     public init(host: String = "::1", port: Int = 42069) async throws {

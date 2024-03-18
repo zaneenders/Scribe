@@ -18,18 +18,34 @@ actor ClientConnction {
 
     func handleConnection() async {
         do {
+            let client = await ClientProgram()
             for try await inboundData in inbound {
                 print(inboundData)
                 let msg: ServerMessage
                 let clientMsg = ClientMessage(json: inboundData)
                 switch clientMsg.command {
-                case let .byte(b, maxX: x, maxY: y):
-                    if "\(b)" == "3" {
+                case let .ascii(b, maxX: x, maxY: y):
+                    guard let ascii = AsciiKeyCode.decode(keyboard: b) else {
                         msg = ServerMessage()
-                    } else {
-                        msg = ServerMessage(frame: Frame(x, y))
+                        try await outbound.write(msg.json)
+                        outbound.finish()
+                        return
+                    }
+                    let m = ClientProgram.processKey(ascii)
+                    let frame = await client.getFrame(with: m, x, y)
+                    switch await client.getStatus() {
+                    case .working:
+                        msg = ServerMessage(frame: frame)
+                    case .close:
+
+                        msg = ServerMessage()
+                        try await outbound.write(msg.json)
+                        outbound.finish()
+                        print("goodbye")
+                        return
                     }
                 case let .connect(c, maxX: x, maxY: y):
+                    print(c)
                     msg = ServerMessage(frame: Frame(x, y))
                 }
                 try await outbound.write(msg.json)
