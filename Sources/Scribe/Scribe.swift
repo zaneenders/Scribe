@@ -3,7 +3,7 @@ private enum IntenralState {
     case running(any Program)
 }
 
-enum State {
+enum ScribeState {
     case running
     case shutdown
 }
@@ -33,7 +33,7 @@ actor Scribe {
     private var programs: [any Program.Type]
     private var selected = 0
 
-    private(set) var state: State
+    private(set) var state: ScribeState
     private var _state: IntenralState
 
     private var page: Page
