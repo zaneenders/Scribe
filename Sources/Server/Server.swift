@@ -4,6 +4,7 @@ import Scribe
 @main
 struct Server: ScribeServer {
     var programs: [any Program.Type] = [
-        ClientProgram.self
+        FilesProgram.self,
+        ClientProgram.self,
     ]
 }
