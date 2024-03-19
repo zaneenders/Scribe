@@ -13,6 +13,20 @@ enum ScribeCommand {
     case key(AsciiKeyCode)
 }
 
+private func buildDate(_ programs: [any Program.Type], _ address: String)
+    -> [[String]]
+{
+    var data: [[String]] = []
+    for (i, prog) in programs.enumerated() {
+        if i == 0 {
+            data.append(["\(prog)", "Scribe", "[\(address)]"])
+        } else {
+            data.append(["\(prog)"])
+        }
+    }
+    return data
+}
+
 actor Scribe {
 
     private let address: String
@@ -41,11 +55,7 @@ actor Scribe {
 
         self.state = .running
         self._state = .ready
-
-        var data: [[String]] = [["Scribe", "[\(address)]"]]
-        for prog in programs {
-            data.append(["\(prog)"])
-        }
+        let data = buildDate(programs, address)
         self.page = Page(data)
     }
 
@@ -69,17 +79,37 @@ actor Scribe {
             case .close:
                 print("shutting down: \(p)")
                 self._state = .ready
-                var data: [[String]] = [["Scribe", "[\(address)]", "\(cmd)"]]
-                for prog in self.programs {
-                    data.append(["\(prog)"])
-                }
+                selected = 0
+                let data = buildDate(programs, address)
                 self.page = Page(data)
             }
-        default:
-            var data: [[String]] = [["Scribe", "[\(address)]", "\(cmd)"]]
-            for prog in self.programs {
-                data.append(["\(prog)"])
+        case (.running, .ready, .key(let k)):
+            switch k {
+            case .lowerCaseJ:
+                if selected + 1 <= programs.count {
+                    page.selected(move: .down)
+                    selected += 1
+                }
+            case .lowerCaseK:
+                // page.selected(move: .right)
+                ()
+            case .lowerCaseF:
+                if selected - 1 >= 0 {
+                    page.selected(move: .up)
+                    selected -= 1
+                }
+            case .lowerCaseO:
+                // page.selected(move: .left)
+                ()
+            default:
+                ()
+
+                let data = buildDate(programs, address)
+                self.page = Page(data)
             }
+
+        default:
+            let data = buildDate(programs, address)
             self.page = Page(data)
         }
     }

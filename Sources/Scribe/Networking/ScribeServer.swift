@@ -1,7 +1,6 @@
 import Foundation
 import NIOCore
 import NIOPosix
-import Shared
 
 public protocol ScribeServer {
     init()

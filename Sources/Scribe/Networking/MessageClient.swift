@@ -1,6 +1,5 @@
 import NIOCore
 import NIOPosix
-import Shared
 
 public struct MessageClient: ~Copyable {
 
