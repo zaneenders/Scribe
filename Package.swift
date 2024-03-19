@@ -28,13 +28,6 @@ let package = Package(
         .target(
             name: "Scribe",
             dependencies: [
-                "Shared",
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio"),
-            ]),
-        .target(
-            name: "Shared",
-            dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
             ]),
