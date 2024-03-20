@@ -29,15 +29,17 @@ extension ScribeServer {
             .serverChannelOption(
                 ChannelOptions.socketOption(.so_reuseaddr), value: 1
             )
-        let asyncChannel:
+        let mainChannel:
             NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
                 try await bootstrap.bind(
                     host: host,
                     port: port
                 ) { channel in
                     channel.eventLoop.makeCompletedFuture {
-                        let msgDecoder = ByteToMessageHandler(MessageReader())
-                        let msgEncoder = MessageToByteHandler(MessageReader())
+                        let msgDecoder = ByteToMessageHandler(
+                            MessageReader())
+                        let msgEncoder = MessageToByteHandler(
+                            MessageReader())
                         try channel.pipeline.syncOperations.addHandlers(
                             [
                                 msgDecoder,
@@ -53,14 +55,69 @@ extension ScribeServer {
                         )
                     }
                 }
-        // Crash if server does not have local address
-        let localAddress = asyncChannel.channel.localAddress!
-        print("\(Self.self) running: \(localAddress)")
+        let otherChannel:
+            NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
+                try await bootstrap.bind(
+                    host: host,
+                    port: port + 1
+                ) { channel in
+                    channel.eventLoop.makeCompletedFuture {
+                        let msgDecoder = ByteToMessageHandler(
+                            MessageReader())
+                        let msgEncoder = MessageToByteHandler(
+                            MessageReader())
+                        try channel.pipeline.syncOperations.addHandlers(
+                            [
+                                msgDecoder,
+                                msgEncoder,
+                            ])
+                        return try NIOAsyncChannel(
+                            wrappingChannelSynchronously: channel,
+                            configuration:
+                                NIOAsyncChannel.Configuration(
+                                    inboundType: String.self,
+                                    outboundType: String.self
+                                )
+                        )
+                    }
+                }
+
         try await withThrowingDiscardingTaskGroup { group in
-            try await asyncChannel.executeThenClose { inbound in
-                for try await connection in inbound {
-                    group.addTask {
-                        try await _handleConnection(connection, programs)
+            group.addTask {
+                // Crash if server does not have local address
+                let localAddress = mainChannel.channel.localAddress!
+                print("\(Self.self) running: \(localAddress)")
+                try await withThrowingDiscardingTaskGroup { group in
+                    try await mainChannel.executeThenClose { inbound in
+                        for try await connection in inbound {
+                            group.addTask {
+                                try await _handleConnection(
+                                    connection, programs)
+                            }
+                        }
+                    }
+                }
+            }
+            if false {
+                group.addTask {
+                    // Crash if server does not have local address
+                    let localAddress = otherChannel.channel.localAddress!
+                    print("\(Self.self) running: \(localAddress)")
+
+                    try await withThrowingDiscardingTaskGroup { group in
+                        try await otherChannel.executeThenClose { inbound in
+                            for try await connection in inbound {
+                                group.addTask {
+
+                                    try await connection.executeThenClose {
+                                        inbound, outbound in
+                                        for try await msg in inbound {
+                                            print(msg)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
