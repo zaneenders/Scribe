@@ -3,10 +3,14 @@ import Foundation
 public enum ClientCommand: Codable, Sendable {
     case ascii(UInt8, maxX: Int, maxY: Int)
     case connect(String, maxX: Int, maxY: Int)
+    case download(name: String)
 }
 
 public struct ClientMessage: Codable {
     public let command: ClientCommand
+    public init(download: String) {
+        self.command = .download(name: download)
+    }
 
     /// maxX and maxY assume 1,1 base indexing
     public init(ascii: UInt8, maxX: Int, maxY: Int) {

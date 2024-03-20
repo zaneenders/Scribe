@@ -32,6 +32,8 @@ public actor ClientProgram: Program {
             self.frame = self.page.renderWindow(self.x, self.y)
         case .frame(let f):
             self.frame = f
+        case .upload:
+            print("\(self) upload")
         }
     }
 
@@ -51,13 +53,14 @@ public actor ClientProgram: Program {
                 do {
                     let host = "::1"
                     let port = 42169
-                    let box = try await Box(host: host, port: port, handle(_:))
+                    let box = try await ClientBox(
+                        host: host, port: port, handle(_:))
                     let clientMsg = ClientMessage(
                         connect: "IDK", maxX: maxX, maxY: maxY)
                     try await box.client.write(msg: clientMsg.json)
                     self.state = .connected(box, 1)
                 } catch {
-                    print("\(self) unable to create \(Box.self)")
+                    print("\(self) unable to create \(ClientBox.self)")
                 }
             default:
                 self.frame = page.renderWindow(maxX, maxY)
@@ -87,18 +90,5 @@ public actor ClientProgram: Program {
 
 private enum State {
     case select
-    case connected(Box, Int)
-}
-
-private final class Box {
-
-    let client: MessageClient
-
-    init(
-        host: String = "::1", port: Int = 42169,
-        _ handle: @escaping (String) -> Void
-    ) async throws {
-        self.client = try await MessageClient(
-            host: host, port: port, handle)
-    }
+    case connected(ClientBox, Int)
 }

@@ -29,6 +29,8 @@ private func render(_ msg: ServerMessage) {
         exit(0)
     case .frame(let f):
         f.printASCII()
+    case .upload:
+        ()  // ignored, different client types?
     }
 }
 

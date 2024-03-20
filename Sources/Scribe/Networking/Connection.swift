@@ -58,6 +58,9 @@ actor Connection {
                         }
                     case let .connect(_, maxX: x, maxY: y):
                         await self.scribe.command(.hello, x, y)
+                    case .download(let name):
+                        let handler = DownloadHandler(self.outbound)
+                        await handler.download(name)
                     }
                 }
             }

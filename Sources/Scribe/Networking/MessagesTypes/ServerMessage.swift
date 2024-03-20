@@ -3,6 +3,7 @@ import Foundation
 public enum MessageType: Codable, Sendable {
     case frame(Frame)
     case disconnect
+    case upload(data: String)
 }
 
 public struct ServerMessage: Codable, Sendable {
@@ -10,6 +11,10 @@ public struct ServerMessage: Codable, Sendable {
 
     public init(frame: Frame) {
         self.type = .frame(frame)
+    }
+
+    public init(upload: String) {
+        self.type = .upload(data: upload)
     }
 
     public init() {
