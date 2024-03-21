@@ -39,6 +39,8 @@ actor Connection {
             group.addTask {
                 // handling incoming messages
                 for try await msg in self.inbound {
+                    print(msg)
+
                     let request = ClientMessage(json: msg)
                     switch request.command {
                     case let .ascii(b, maxX: x, maxY: y):
@@ -56,11 +58,22 @@ actor Connection {
                             await self.disconnect()
                             return
                         }
+                    case .disconnect:
+                        print("please dissconnect")
+                        let msg = ServerMessage()
+                        try await self.outbound.write(msg.json)
+                        await self.disconnect()
+                        return
                     case let .connect(_, maxX: x, maxY: y):
                         await self.scribe.command(.hello, x, y)
                     case .download(let name):
                         let handler = DownloadHandler(self.outbound)
                         await handler.download(name)
+                        print("please dissconnect downloader")
+                        let msg = ServerMessage()
+                        try await self.outbound.write(msg.json)
+                        await self.disconnect()
+                        return
                     }
                 }
             }

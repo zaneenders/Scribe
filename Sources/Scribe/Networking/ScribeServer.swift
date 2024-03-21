@@ -55,33 +55,6 @@ extension ScribeServer {
                         )
                     }
                 }
-        let otherChannel:
-            NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
-                try await bootstrap.bind(
-                    host: host,
-                    port: port + 1
-                ) { channel in
-                    channel.eventLoop.makeCompletedFuture {
-                        let msgDecoder = ByteToMessageHandler(
-                            MessageReader())
-                        let msgEncoder = MessageToByteHandler(
-                            MessageReader())
-                        try channel.pipeline.syncOperations.addHandlers(
-                            [
-                                msgDecoder,
-                                msgEncoder,
-                            ])
-                        return try NIOAsyncChannel(
-                            wrappingChannelSynchronously: channel,
-                            configuration:
-                                NIOAsyncChannel.Configuration(
-                                    inboundType: String.self,
-                                    outboundType: String.self
-                                )
-                        )
-                    }
-                }
-
         try await withThrowingDiscardingTaskGroup { group in
             group.addTask {
                 // Crash if server does not have local address
@@ -98,27 +71,10 @@ extension ScribeServer {
                     }
                 }
             }
-            if false {
+            if true {
                 group.addTask {
                     // Crash if server does not have local address
-                    let localAddress = otherChannel.channel.localAddress!
-                    print("\(Self.self) running: \(localAddress)")
-
-                    try await withThrowingDiscardingTaskGroup { group in
-                        try await otherChannel.executeThenClose { inbound in
-                            for try await connection in inbound {
-                                group.addTask {
-
-                                    try await connection.executeThenClose {
-                                        inbound, outbound in
-                                        for try await msg in inbound {
-                                            print(msg)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    try? await other(host, port + 10)
                 }
             }
         }
@@ -133,6 +89,61 @@ extension ScribeServer {
                 let connection = Connection(
                     programs, "\(address)", inbound, outbound)
                 try await connection.mainloop()
+            }
+        }
+    }
+}
+
+// TODO how do I start this at run time and turn it off at runtime
+public func other(_ host: String, _ port: Int) async throws {
+    let eventLoopGroup: MultiThreadedEventLoopGroup =
+        MultiThreadedEventLoopGroup(numberOfThreads: 2)
+    let bootstrap = ServerBootstrap(group: eventLoopGroup)
+        .serverChannelOption(
+            ChannelOptions.socketOption(.so_reuseaddr), value: 1
+        )
+
+    let otherChannel: NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
+        try await bootstrap.bind(
+            host: host,
+            port: port + 10
+        ) { channel in
+            channel.eventLoop.makeCompletedFuture {
+                let msgDecoder = ByteToMessageHandler(
+                    MessageReader())
+                let msgEncoder = MessageToByteHandler(
+                    MessageReader())
+                try channel.pipeline.syncOperations.addHandlers(
+                    [
+                        msgDecoder,
+                        msgEncoder,
+                    ])
+                return try NIOAsyncChannel(
+                    wrappingChannelSynchronously: channel,
+                    configuration:
+                        NIOAsyncChannel.Configuration(
+                            inboundType: String.self,
+                            outboundType: String.self
+                        )
+                )
+            }
+        }
+
+    let localAddress = otherChannel.channel.localAddress!
+    print("Other running: \(localAddress)")
+
+    try await withThrowingDiscardingTaskGroup { group in
+        try await otherChannel.executeThenClose { inbound in
+            for try await connection in inbound {
+                group.addTask {
+
+                    try await connection.executeThenClose {
+                        inbound, outbound in
+                        for try await msg in inbound {
+                            print(msg)
+                        }
+                    }
+                }
             }
         }
     }

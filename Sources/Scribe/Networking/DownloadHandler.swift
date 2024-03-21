@@ -10,7 +10,6 @@ actor DownloadHandler {
 
     private let outbound: NIOAsyncChannelOutboundWriter<String>
     func download(_ name: String) async {
-        print("download")
         let test = "/home/zane/.scribe/test"
         let path: FilePath = FilePath(test)
         do {
@@ -22,13 +21,17 @@ actor DownloadHandler {
                 {
                     if let str = data.readString(length: Int(info.size)) {
                         let msg = ServerMessage(upload: str)
-                        try await outbound.write(msg.json)
+                        try? await outbound.write(msg.json)
                     }
                 }
             }
             try await fh.close()
+            print("download sent")
         } catch {
             print("un able to send upload")
         }
+    }
+    deinit {
+        print("deinit\(self)")
     }
 }

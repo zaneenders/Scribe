@@ -4,10 +4,14 @@ public enum ClientCommand: Codable, Sendable {
     case ascii(UInt8, maxX: Int, maxY: Int)
     case connect(String, maxX: Int, maxY: Int)
     case download(name: String)
+    case disconnect
 }
 
 public struct ClientMessage: Codable {
     public let command: ClientCommand
+    public init(disconnect: String) {
+        self.command = .disconnect
+    }
     public init(download: String) {
         self.command = .download(name: download)
     }

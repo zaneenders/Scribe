@@ -48,14 +48,22 @@ public actor NetworkedFiles: Program {
             switch k {
             case .ctrlC:
                 switch self.state {
-                case .connected(_, _):
+                case .connected(let b, _):
+                    let dis = ClientMessage(disconnect: "")
+                    try? await b.client.write(msg: dis.json)
+                    print("closing \(b)")
                     self.state = .ready
                 case .ready:
                     self.status = .close
                 case .hasDownload(let store):
-                    print("can not quit with download")
+                    print("download lost")
+                    self.state = .ready
                 }
-            default:
+            case .ctrlR:
+                ()
+            // data race
+            // try? await other("::1", 42020)
+            case .ctrlJ:
                 switch self.state {
                 case .connected(let client, _):
                     // downlaod message
@@ -66,6 +74,8 @@ public actor NetworkedFiles: Program {
                     } catch {
                         print("unable to send \(msg)")
                     }
+                    print("closing: \(client)")
+                // try? await client.client.close()
 
                 case .ready:
                     let host = "::1"
@@ -92,11 +102,15 @@ public actor NetworkedFiles: Program {
                             contentsOf: bytes)
                         try await writer.flush()
                         try await fh.close()
+                        print("download complete")
                         self.state = .ready
                     } catch {
                         print("error writing file \(path)")
                     }
+                    self.state = .ready
                 }
+            default:
+                ()
             }
         default:
             ()
@@ -119,6 +133,7 @@ private final class Storage {
     }
     let data: String
 }
+
 private enum State {
     case ready
     case connected(ClientBox, Int)
