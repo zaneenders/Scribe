@@ -35,6 +35,7 @@ public actor BlockProgram: Program {
     public func command(
         with action: Command<BlockAction>, _ maxX: Int, _ maxY: Int
     ) async {
+        print("Badtrace: \(BadTrace.id)")
         switch action {
         case .hello:
             ()
