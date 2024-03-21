@@ -1,3 +1,4 @@
+import Observation
 import Scribe
 
 public enum BlockAction: Action {
@@ -14,6 +15,8 @@ public actor BlockProgram: Program {
 
     private(set) var status: Status = .working
     private(set) var frame: Frame = Frame(80, 24)
+    private var x: Int = 80
+    private var y: Int = 24
 
     private var page: Page
 
@@ -23,7 +26,13 @@ public actor BlockProgram: Program {
         @State var count = 0
         var component: some Block {
             Button("Hello \(count)") {
-                count += 100
+                count += 1
+            }
+            if count.isMultiple(of: 2) {
+                Button("Even") {}
+            }
+            for i in 0..<3 {
+                Button("row \(i)") {}
             }
         }
     }
@@ -35,10 +44,12 @@ public actor BlockProgram: Program {
     public func command(
         with action: Command<BlockAction>, _ maxX: Int, _ maxY: Int
     ) async {
+        self.x = maxX
+        self.y = maxY
         print("Badtrace: \(BadTrace.id)")
         switch action {
         case .hello:
-            ()
+            await update()
         case .action(.key(let k)):
             switch k {
             case .ctrlC:
@@ -46,14 +57,25 @@ public actor BlockProgram: Program {
             default:
                 ()
             }
-            let contents: [[String]] = unfoldAndPress(block).map { [$0] }
-            self.page = Page(contents)
+            onlyPress(block)
         }
-        self.frame = self.page.renderWindow(maxX, maxY)
+    }
+
+    private func update() async {
+        withObservationTracking(
+            {
+                let contents: [[String]] = unfold(block).map { [$0] }
+                self.page = Page(contents)
+            },
+            onChange: {
+                Task { @MainActor in
+                    await self.update()
+                }
+            })
     }
 
     public func getFrame() async -> Frame {
-        self.frame
+        page.renderWindow(x, y)
     }
 
     public func getStatus() async -> Status {

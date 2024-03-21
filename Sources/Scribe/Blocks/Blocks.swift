@@ -5,19 +5,44 @@ public protocol Block {
 
 @resultBuilder
 public enum BlockParser {
-    public static func buildPartialBlock(first content: some Block)
-        -> some Block
-    {
-        return content
+    public static func buildPartialBlock<B: Block>(first: B) -> B {
+        first
     }
 
-    public static func buildPartialBlock(
-        accumulated: some Block, next: some Block
-    )
-        -> some Block
-    {
-        return TupleBlock(value: (accumulated, next))
+    public static func buildPartialBlock<B0: Block, B1: Block>(
+        accumulated: B0, next: B1
+    ) -> some Block {
+        TupleBlock(first: accumulated, second: next)
     }
+
+    public static func buildOptional<B: Block>(_ component: B?) -> some Block {
+        ArrayBlock(blocks: component.map { [$0] } ?? [])
+    }
+
+    public static func buildEither(first component: some Block) -> some Block {
+        ArrayBlock(blocks: [component])
+    }
+
+    public static func buildEither(second component: some Block) -> some Block {
+        ArrayBlock(blocks: [component])
+    }
+
+    public static func buildArray<B: Block>(_ components: [B]) -> some Block {
+        ArrayBlock(blocks: components)
+    }
+}
+
+public struct ArrayBlock<B: Block>: Block, LevelOneBlock, ArrayBlocks {
+    let type: LevelOneBlockType = .array
+    let blocks: [B]
+
+    var _blocks: [any Block] {
+        blocks
+    }
+}
+
+protocol ArrayBlocks {
+    var _blocks: [any Block] { get }
 }
 
 extension Page {
@@ -28,16 +53,23 @@ extension Page {
 
 }
 
-func unfold(_ block: some Block) -> [String] {
+public func unfold(_ block: some Block) -> [String] {
     if let l1 = block as? LevelOneBlock {
         switch l1.type {
+        case .array:
+            let a = l1 as! any ArrayBlocks
+            var out: [String] = []
+            for b in a._blocks {
+                out.append(contentsOf: unfold(b))
+            }
+            return out
         case .button:
             let b = l1 as! Button
             return [b.label]
         case .tuple:
             let t = l1 as! TupleBlock
-            let f = unfold(t.value.first)
-            let s = unfold(t.value.secound)
+            let f = unfold(t.first)
+            let s = unfold(t.second)
             return f + s
         }
     } else {
@@ -45,21 +77,24 @@ func unfold(_ block: some Block) -> [String] {
     }
 }
 
-public func unfoldAndPress(_ block: some Block) -> [String] {
+public func onlyPress(_ block: some Block) {
     if let l1 = block as? LevelOneBlock {
         switch l1.type {
         case .button:
             let b = l1 as! Button
             b.action()
-            return [b.label]
+        case .array:
+            let a = l1 as! any ArrayBlocks
+            for b in a._blocks {
+                onlyPress(b)
+            }
         case .tuple:
             let t = l1 as! TupleBlock
-            let f = unfoldAndPress(t.value.first)
-            let s = unfoldAndPress(t.value.secound)
-            return f + s
+            onlyPress(t.first)
+            onlyPress(t.second)
         }
     } else {
-        return unfoldAndPress(block.component)
+        onlyPress(block.component)
     }
 }
 
@@ -83,6 +118,7 @@ protocol LevelOneBlock {
 }
 
 enum LevelOneBlockType {
+    case array
     case button
     case tuple
 }
