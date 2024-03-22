@@ -18,13 +18,34 @@ let package = Package(
         .target(name: "Programs", dependencies: ["Scribe"]),
         .executableTarget(
             name: "Client",
-            dependencies: ["Scribe"]),
+            dependencies: ["Scribe"],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ExistentialAny"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency"),
+                .unsafeFlags([
+                    "-warn-concurrency", "-enable-actor-data-race-checks",
+                ]),
+            ]
+        ),
         .executableTarget(
             name: "Server",
-            dependencies: [
-                "Scribe",
-                "Programs",
-            ]),
+            dependencies: ["Scribe", "Programs"],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ExistentialAny"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency"),
+                .unsafeFlags([
+                    "-warn-concurrency", "-enable-actor-data-race-checks",
+                ]),
+            ]
+        ),
         .target(
             name: "Scribe",
             dependencies: [
