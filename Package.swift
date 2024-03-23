@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Scribe",
     products: [
-        .executable(name: "Client", targets: ["Client"]),
+        .executable(name: "Client", targets: ["TerminalClient"]),
         .executable(name: "Server", targets: ["Server"]),
         .library(name: "Scribe", targets: ["Scribe"]),
     ],
@@ -17,7 +17,7 @@ let package = Package(
         // Examples
         .target(name: "Programs", dependencies: ["Scribe"]),
         .executableTarget(
-            name: "Client",
+            name: "TerminalClient",
             dependencies: ["Scribe"],
             swiftSettings: [
                 .enableUpcomingFeature("BareSlashRegexLiterals"),
