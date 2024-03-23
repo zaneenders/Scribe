@@ -22,12 +22,19 @@ public actor BlockProgram: Program {
 
     private var block: any Block = Main()
 
+    class StateObject: ScribeObservable {
+        var name: String = "Zane"
+    }
+
     struct Main: Block {
+        var state: StateObject = StateObject()
         @State var count = 0
         var component: some Block {
-            Button("Hello \(count)") {
+            Button("\(state.name) \(count)") {
                 count += 1
+                state.name += "!"
             }
+            Button("\(state.name) \(count)") {}
             if count.isMultiple(of: 2) {
                 Button("Even") {}
             }
