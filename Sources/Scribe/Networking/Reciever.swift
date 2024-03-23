@@ -13,7 +13,8 @@ actor Reciever {
         print("Reciever[\(address)] deinit")
     }
 
-    func setWrter(_ writer: @Sendable @escaping (String) async throws -> Void) {
+    func setWriter(_ writer: @Sendable @escaping (String) async throws -> Void)
+    {
         self.writer = writer
     }
 

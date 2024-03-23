@@ -71,7 +71,7 @@ struct Client {
         print(AnsiCode.goTo(0, 0))
 
         let host: String = "::1"
-        let port: Int = 42089
+        let port: Int = 42069
         let eventGroup: MultiThreadedEventLoopGroup = .singleton
         let channel = try await ClientBootstrap(group: eventGroup)
             .channelOption(

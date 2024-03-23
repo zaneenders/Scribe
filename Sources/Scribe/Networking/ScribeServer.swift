@@ -24,83 +24,18 @@ extension ScribeServer {
             host = "::1"
             port = 42069
         }
-        let eventLoopGroup: MultiThreadedEventLoopGroup = .singleton
-        let bootstrap = ServerBootstrap(group: eventLoopGroup)
-            .serverChannelOption(
-                ChannelOptions.socketOption(.so_reuseaddr), value: 1
-            )
-        let mainChannel:
-            NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
-                try await bootstrap.bind(
-                    host: host,
-                    port: port
-                ) { channel in
-                    channel.eventLoop.makeCompletedFuture {
-                        let msgDecoder = ByteToMessageHandler(
-                            MessageReader())
-                        let msgEncoder = MessageToByteHandler(
-                            MessageReader())
-                        try channel.pipeline.syncOperations.addHandlers(
-                            [
-                                msgDecoder,
-                                msgEncoder,
-                            ])
-                        return try NIOAsyncChannel(
-                            wrappingChannelSynchronously: channel,
-                            configuration:
-                                NIOAsyncChannel.Configuration(
-                                    inboundType: String.self,
-                                    outboundType: String.self
-                                )
-                        )
-                    }
-                }
         try await withThrowingDiscardingTaskGroup { group in
             group.addTask {
-                // Crash if server does not have local address
-                let localAddress = mainChannel.channel.localAddress!
-                print("\(Self.self) running: \(localAddress)")
-                try await withThrowingDiscardingTaskGroup { group in
-                    try await mainChannel.executeThenClose { inbound in
-                        for try await connection in inbound {
-                            group.addTask {
-                                try await _handleConnection(
-                                    connection, programs)
-                            }
-                        }
-                    }
-                }
-            }
-            if true {
-                group.addTask {
-                    // Crash if server does not have local address
-                    try? await other(host, port + 10, programs)
-                }
-            }
-        }
-    }
-
-    private static func _handleConnection(
-        _ channel: NIOAsyncChannel<String, String>,
-        _ programs: [any Program.Type]
-    ) async throws {
-        try await channel.executeThenClose { inbound, outbound in
-            if let address = channel.channel.remoteAddress {
-                let connection = Connection(
-                    programs, "\(address)", inbound, outbound)
-                try await connection.mainloop()
-                print("goodbye")
+                try? await listen(on: host, port, programs)
             }
         }
     }
 }
 
-// TODO how do I start this at run time and turn it off at runtime
-public func other(_ host: String, _ port: Int, _ programs: [any Program.Type])
+func listen(on host: String, _ port: Int, _ programs: [any Program.Type])
     async throws
 {
-    let eventLoopGroup: MultiThreadedEventLoopGroup =
-        MultiThreadedEventLoopGroup(numberOfThreads: 2)
+    let eventLoopGroup: MultiThreadedEventLoopGroup = .singleton
     let bootstrap = ServerBootstrap(group: eventLoopGroup)
         .serverChannelOption(
             ChannelOptions.socketOption(.so_reuseaddr), value: 1
@@ -109,7 +44,7 @@ public func other(_ host: String, _ port: Int, _ programs: [any Program.Type])
     let otherChannel: NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
         try await bootstrap.bind(
             host: host,
-            port: port + 10
+            port: port
         ) { channel in
             channel.eventLoop.makeCompletedFuture {
                 let msgDecoder = ByteToMessageHandler(
@@ -133,27 +68,31 @@ public func other(_ host: String, _ port: Int, _ programs: [any Program.Type])
         }
 
     let localAddress = otherChannel.channel.localAddress!
-    print("Other running: \(localAddress)")
+    print("Listening on: \(localAddress)")
 
     try await withThrowingDiscardingTaskGroup { group in
         try await otherChannel.executeThenClose { inbound in
             for try await connection in inbound {
                 group.addTask {
-                    let test = Reciever("\(localAddress)", programs)
+                    guard let remoteAddress = connection.channel.remoteAddress
+                    else {
+                        return
+                    }
+                    let test = Reciever("\(remoteAddress)", programs)
                     try await connection.executeThenClose {
                         inbound, outbound in
-                        print("connected")
+                        print("[\(remoteAddress)] connected")
 
                         @Sendable
                         func writer(_ json: String) async throws {
                             try await outbound.write(json)
                         }
 
-                        await test.setWrter(writer(_:))
+                        await test.setWriter(writer(_:))
                         for try await msg in inbound {
                             try await test.read(msg)
                         }
-                        print("disconnected")
+                        print("[\(remoteAddress)] disconnected")
                     }
                 }
             }
