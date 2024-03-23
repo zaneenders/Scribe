@@ -48,7 +48,7 @@ public actor NetworkedFiles: Program {
             switch k {
             case .ctrlC:
                 switch self.state {
-                case .connected(let b, _):
+                case .connected(let b):
                     print("closing \(b)")
                     self.state = .ready
                 case .ready:
@@ -57,13 +57,19 @@ public actor NetworkedFiles: Program {
                     print("download lost")
                     self.state = .ready
                 }
-            case .ctrlR:
-                ()
-            // data race
-            // try? await other("::1", 42020)
             case .ctrlJ:
                 switch self.state {
-                case .connected(let client, _):
+                case .ready:
+                    let host = "::1"
+                    let port = 42068
+                    do {
+                        self.state = try await .connected(
+                            ClientBox(host: host, port: port, handle))
+                        print("Connected to \(host): \(port)")
+                    } catch {
+                        print("Failed to connect to \(host): \(port)")
+                    }
+                case .connected(let client):
                     // downlaod message
                     let msg = FilesMessage(request: "Zane was here")
                     do {
@@ -73,18 +79,6 @@ public actor NetworkedFiles: Program {
                         print("unable to send \(msg)")
                     }
                     print("closing: \(client)")
-                // try? await client.client.close()
-
-                case .ready:
-                    let host = "::1"
-                    let port = 42068
-                    do {
-                        self.state = try await .connected(
-                            ClientBox(host: host, port: port, handle), 0)
-                        print("Connected to \(host): \(port)")
-                    } catch {
-                        print("Failed to connect to \(host): \(port)")
-                    }
                 case .hasDownload(let store):
                     let ops: OpenOptions.Write = .newFile(replaceExisting: true)
                     let path = FilePath(
@@ -134,6 +128,6 @@ private final class Storage {
 
 private enum State {
     case ready
-    case connected(ClientBox, Int)
+    case connected(ClientBox)
     case hasDownload(Storage)
 }

@@ -21,7 +21,7 @@ public struct MessageClient: ~Copyable {
 
     public init(
         host: String = "::1", port: Int = 42069,
-        _ handle: @Sendable @escaping (String) -> Void
+        _ handle: @escaping (String) -> Void
     ) async throws {
         let eventGroup: MultiThreadedEventLoopGroup = .singleton
         do {
@@ -72,7 +72,7 @@ public final class MessageDelgator<Request, Response>:
 
     private let handle: (Response) -> Void
 
-    public init(_ handle: @Sendable @escaping (Response) -> Void) {
+    public init(_ handle: @escaping (Response) -> Void) {
         self.handle = handle
     }
 

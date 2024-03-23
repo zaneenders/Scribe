@@ -58,14 +58,14 @@ public actor ClientProgram: Program {
                     let clientMsg = ClientMessage(
                         connect: "IDK", maxX: maxX, maxY: maxY)
                     try await box.client.write(msg: clientMsg.json)
-                    self.state = .connected(box, 1)
+                    self.state = .connected(box)
                 } catch {
                     print("\(self) unable to create \(ClientBox.self)")
                 }
             default:
                 self.frame = page.renderWindow(maxX, maxY)
             }
-        case (.working, .connected(let b, let i), .action(.key(let k))):
+        case (.working, .connected(let b), .action(.key(let k))):
             let clientMsg = ClientMessage(
                 ascii: k.rawValue, maxX: maxX, maxY: maxY)
             do {
@@ -90,5 +90,5 @@ public actor ClientProgram: Program {
 
 private enum State {
     case select
-    case connected(ClientBox, Int)
+    case connected(ClientBox)
 }
