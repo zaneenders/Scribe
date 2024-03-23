@@ -6,6 +6,16 @@ import Scribe
 @main
 struct Client {
     public static func main() async throws {
+        let args = CommandLine.arguments
+        let host: String
+        let port: Int
+        if args.count >= 3 {
+            host = args[1]
+            port = Int(args[2])!
+        } else {
+            host = "::1"
+            port = 42069
+        }
         var raw: termios = initCStruct()
         let std_fd = FileHandle.standardInput.fileDescriptor
         tcgetattr(std_fd, &raw)  // save current profile
@@ -70,8 +80,6 @@ struct Client {
         print(clearCode, terminator: "")
         print(AnsiCode.goTo(0, 0))
 
-        let host: String = "::1"
-        let port: Int = 42069
         let eventGroup: MultiThreadedEventLoopGroup = .singleton
         let channel = try await ClientBootstrap(group: eventGroup)
             .channelOption(

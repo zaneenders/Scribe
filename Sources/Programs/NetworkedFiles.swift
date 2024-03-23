@@ -79,7 +79,7 @@ public actor NetworkedFiles: Program {
 
                 case .ready:
                     let host = "::1"
-                    let port = 42169
+                    let port = 42068
                     do {
                         self.state = try await .connected(
                             ClientBox(host: host, port: port, handle), 0)

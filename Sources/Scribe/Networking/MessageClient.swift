@@ -5,13 +5,7 @@ public struct MessageClient: ~Copyable {
 
     private let channel: any Channel
 
-    public var address: String {
-        if let addres = channel.localAddress {
-            return "\(addres)"
-        } else {
-            return "CLIENT ERROR"
-        }
-    }
+    public var address: String
 
     public func write(msg: String) async throws {
         do {
@@ -49,9 +43,15 @@ public struct MessageClient: ~Copyable {
                     }
                 }
                 .connect(host: host, port: port).get()
+            self.address = "\(channel.localAddress!)"
         } catch {
             throw ClientError.connect("\(error)")
         }
+        print("MessageClient started: \(address)")
+    }
+
+    deinit {
+        print("MessageClient closing: \(address)")
     }
 }
 

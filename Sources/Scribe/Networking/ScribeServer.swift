@@ -28,6 +28,9 @@ extension ScribeServer {
             group.addTask {
                 try? await listen(on: host, port, programs)
             }
+            group.addTask {
+                try? await downloads(on: host, port - 1)
+            }
         }
     }
 }
@@ -81,7 +84,7 @@ func listen(on host: String, _ port: Int, _ programs: [any Program.Type])
                     let reciever = Reciever("\(remoteAddress)", programs)
                     try await connection.executeThenClose {
                         inbound, outbound in
-                        print("[\(remoteAddress)] connected")
+                        print("Client: [\(remoteAddress)] connected")
 
                         @Sendable
                         func writer(_ json: String) async throws {
@@ -92,7 +95,75 @@ func listen(on host: String, _ port: Int, _ programs: [any Program.Type])
                         for try await msg in inbound {
                             try await reciever.read(msg)
                         }
-                        print("[\(remoteAddress)] disconnected")
+                        print("Client: [\(remoteAddress)] disconnected")
+                    }
+                }
+            }
+        }
+    }
+}
+
+func downloads(on host: String, _ port: Int)
+    async throws
+{
+    let eventLoopGroup: MultiThreadedEventLoopGroup = .singleton
+    let bootstrap = ServerBootstrap(group: eventLoopGroup)
+        .serverChannelOption(
+            ChannelOptions.socketOption(.so_reuseaddr), value: 1
+        )
+
+    let otherChannel: NIOAsyncChannel<NIOAsyncChannel<String, String>, Never> =
+        try await bootstrap.bind(
+            host: host,
+            port: port
+        ) { channel in
+            channel.eventLoop.makeCompletedFuture {
+                let msgDecoder = ByteToMessageHandler(
+                    MessageReader())
+                let msgEncoder = MessageToByteHandler(
+                    MessageReader())
+                try channel.pipeline.syncOperations.addHandlers(
+                    [
+                        msgDecoder,
+                        msgEncoder,
+                    ])
+                return try NIOAsyncChannel(
+                    wrappingChannelSynchronously: channel,
+                    configuration:
+                        NIOAsyncChannel.Configuration(
+                            inboundType: String.self,
+                            outboundType: String.self
+                        )
+                )
+            }
+        }
+
+    let localAddress = otherChannel.channel.localAddress!
+    print("Downloads on: \(localAddress)")
+
+    try await withThrowingDiscardingTaskGroup { group in
+        try await otherChannel.executeThenClose { inbound in
+            for try await connection in inbound {
+                group.addTask {
+                    guard let remoteAddress = connection.channel.remoteAddress
+                    else {
+                        return
+                    }
+                    let reciever = DownloadConnection("\(remoteAddress)")
+                    try await connection.executeThenClose {
+                        inbound, outbound in
+                        print("Downloads: [\(remoteAddress)] connected")
+
+                        @Sendable
+                        func writer(_ json: String) async throws {
+                            try await outbound.write(json)
+                        }
+
+                        await reciever.setWriter(writer(_:))
+                        for try await msg in inbound {
+                            try await reciever.read(msg)
+                        }
+                        print("Downloads: [\(remoteAddress)] disconnected")
                     }
                 }
             }
