@@ -3,40 +3,76 @@ import NIOCore
 import NIOPosix
 import Scribe
 
-@Sendable
-private func handle(_ msg: String) {
-    let msg = ServerMessage(json: msg)
-    switch msg.type {
-    case .disconnect:
-        exit(0)
-    case .frame(let f):
-
-        let size = TerminalSize.size()
-        guard size.x == f.maxX && size.y == f.maxY else {
-            return
-        }
-        var out = ""
-        for y in 1...f.maxY {
-            for x in 1...f.maxX {
-                out += String(f.frame[Location(x, y)]!)
-            }
-            if y != f.maxY {
-                out += "\n"
-            }
-        }
-        print(clearCode, terminator: "")
-        print(out, terminator: "")
-    case .upload:
-        ()  // ignored, different client types?
-    }
-}
 @main
 struct Client {
     public static func main() async throws {
+        var raw: termios = initCStruct()
+        let std_fd = FileHandle.standardInput.fileDescriptor
+        tcgetattr(std_fd, &raw)  // save current profile
+        let originalConfig = raw
+        defer {
+            // restore on release
+            var term = originalConfig
+            tcsetattr(std_fd, TCSAFLUSH, &term)
+
+            print(clearCode, terminator: "")
+            print(
+                AnsiCode.Cursor.show.rawValue + AnsiCode.reset.rawValue,
+                terminator: "")
+            print("Scribe: Goodbye")
+        }
+
+        @Sendable
+        func handle(_ msg: String) {
+            let msg = ServerMessage(json: msg)
+            switch msg.type {
+            case .disconnect:
+                // restore on release
+                var term = originalConfig
+                tcsetattr(std_fd, TCSAFLUSH, &term)
+
+                print(clearCode, terminator: "")
+                print(
+                    AnsiCode.Cursor.show.rawValue + AnsiCode.reset.rawValue,
+                    terminator: "")
+                print("Scribe: Goodbye")
+                exit(0)
+            case .frame(let f):
+
+                let size = TerminalSize.size()
+                guard size.x == f.maxX && size.y == f.maxY else {
+                    return
+                }
+                var out = ""
+                for y in 1...f.maxY {
+                    for x in 1...f.maxX {
+                        out += String(f.frame[Location(x, y)]!)
+                    }
+                    if y != f.maxY {
+                        out += "\n"
+                    }
+                }
+                print(clearCode, terminator: "")
+                print(out, terminator: "")
+            case .upload:
+                ()  // ignored, different client types?
+            }
+        }
+
+        #if os(Linux)
+            raw.c_lflag &= UInt32(~(UInt32(ECHO | ICANON | IEXTEN | ISIG)))
+        #else  // MacOS
+            raw.c_lflag &= UInt(~(UInt32(ECHO | ICANON | IEXTEN | ISIG)))
+        #endif
+        // apply raw mode to std in
+        tcsetattr(std_fd, TCSAFLUSH, &raw)
+        print(AnsiCode.Cursor.hide.rawValue, terminator: "")
+        print(clearCode, terminator: "")
+        print(AnsiCode.goTo(0, 0))
+
         let host: String = "::1"
         let port: Int = 42089
         let eventGroup: MultiThreadedEventLoopGroup = .singleton
-
         let channel = try await ClientBootstrap(group: eventGroup)
             .channelOption(
                 ChannelOptions.socketOption(.so_reuseaddr), value: 1
@@ -55,60 +91,48 @@ struct Client {
                 }
             }
             .connect(host: host, port: port).get()
-        // var raw: termios = initCStruct()
-        // let std_fd = FileHandle.standardInput.fileDescriptor
-        // tcgetattr(std_fd, &raw)  // save current profile
-        // let originalConfig = raw
-        // defer {
-        //     // restore on release
-        //     var term = originalConfig
-        //     tcsetattr(std_fd, TCSAFLUSH, &term)
-        //
-        //     print(clearCode, terminator: "")
-        //     print(
-        //         AnsiCode.Cursor.show.rawValue + AnsiCode.reset.rawValue,
-        //         terminator: "")
-        //     print("Scribe: Goodbye")
-        // }
-        //
-        // #if os(Linux)
-        //     raw.c_lflag &= UInt32(~(UInt32(ECHO | ICANON | IEXTEN | ISIG)))
-        // #else  // MacOS
-        //     raw.c_lflag &= UInt(~(UInt32(ECHO | ICANON | IEXTEN | ISIG)))
-        // #endif
-        // // apply raw mode to std in
-        // tcsetattr(std_fd, TCSAFLUSH, &raw)
-        // print(AnsiCode.Cursor.hide.rawValue, terminator: "")
-        // print(clearCode, terminator: "")
-        // print(AnsiCode.goTo(0, 0))
-        // do {
-        //     let size = TerminalSize.size()
-        //     guard let address = channel.localAddress else {
-        //         return
-        //     }
-        //     let clientMsg = ClientMessage(
-        //         connect: "\(address)", maxX: size.x, maxY: size.y)
-        //     try await channel.write(clientMsg.json)
-        // } catch {
-        //     print(error.localizedDescription)
-        //     exit(0)
-        // }
-        // let std: FileHandle = FileHandle.standardInput
-        // for try await byte in std.asyncByteIterator() {
-        //     let size = TerminalSize.size()
-        //     do {
-        //         let clientMsg = ClientMessage(
-        //             ascii: byte, maxX: size.x, maxY: size.y)
-        //         try await channel.write(clientMsg.json)
-        //     } catch {
-        //         print(error.localizedDescription)
-        //         exit(0)
-        //     }
-        // }
-        let msg = ClientMessage(connect: "connect", maxX: 80, maxY: 24)
-        try await channel.writeAndFlush(msg.json)
-        print("sent: \(msg.json)")
-        try? await Task.sleep(for: .seconds(1))
+        do {
+            let size = TerminalSize.size()
+            guard let address = channel.localAddress else {
+                return
+            }
+            let clientMsg = ClientMessage(
+                connect: "\(address)", maxX: size.x, maxY: size.y)
+            try await channel.writeAndFlush(clientMsg.json)
+        } catch {
+            // restore on release
+            var term = originalConfig
+            tcsetattr(std_fd, TCSAFLUSH, &term)
+
+            print(clearCode, terminator: "")
+            print(
+                AnsiCode.Cursor.show.rawValue + AnsiCode.reset.rawValue,
+                terminator: "")
+            print("Scribe: Goodbye")
+            print(error.localizedDescription)
+            exit(0)
+        }
+        let std: FileHandle = FileHandle.standardInput
+        for try await byte in std.asyncByteIterator() {
+            let size = TerminalSize.size()
+            do {
+                let clientMsg = ClientMessage(
+                    ascii: byte, maxX: size.x, maxY: size.y)
+                try await channel.writeAndFlush(clientMsg.json)
+            } catch {
+                // restore on release
+                var term = originalConfig
+                tcsetattr(std_fd, TCSAFLUSH, &term)
+
+                print(clearCode, terminator: "")
+                print(
+                    AnsiCode.Cursor.show.rawValue + AnsiCode.reset.rawValue,
+                    terminator: "")
+                print("Scribe: Goodbye")
+                print(error.localizedDescription)
+                exit(0)
+            }
+        }
     }
 }
 

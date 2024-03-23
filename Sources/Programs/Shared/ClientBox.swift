@@ -6,7 +6,7 @@ internal final class ClientBox {
 
     init(
         host: String = "::1", port: Int = 42169,
-        _ handle: @escaping (String) -> Void
+        _ handle: @Sendable @escaping (String) -> Void
     ) async throws {
         self.client = try await MessageClient(
             host: host, port: port, handle)

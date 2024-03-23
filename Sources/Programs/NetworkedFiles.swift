@@ -55,7 +55,7 @@ public actor NetworkedFiles: Program {
                     self.state = .ready
                 case .ready:
                     self.status = .close
-                case .hasDownload(let store):
+                case .hasDownload(_):
                     print("download lost")
                     self.state = .ready
                 }
