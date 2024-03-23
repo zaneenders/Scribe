@@ -18,18 +18,14 @@ actor Reciever {
     }
 
     func read(_ json: String) async throws {
-        if let clientMsg = ClientMessage(json: json) {
+        if let clientMsg = TerminalMessage(json: json) {
             try await handle(clientMsg)
         }
     }
 
-    private func handle(_ msg: ClientMessage) async throws {
+    private func handle(_ msg: TerminalMessage) async throws {
         let rsp: ServerMessage
         switch msg.command {
-        case .disconnect:
-            rsp = ServerMessage()
-        case let .download(name: _):
-            rsp = ServerMessage()
         case let .ascii(b, maxX: x, maxY: y):
             if let code = AsciiKeyCode.decode(keyboard: b) {
                 await self.scribe.command(.key(code), x, y)
