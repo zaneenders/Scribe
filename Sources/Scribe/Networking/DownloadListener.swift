@@ -1,3 +1,5 @@
+import NIOFileSystem
+
 @globalActor
 actor DownloadManager {
     static let shared: DownloadManager = DownloadManager()
@@ -23,6 +25,38 @@ actor DownloadConnection {
     }
 
     func read(_ json: String) async throws {
-        print("DownloadConnection[\(address)]: \(json)")
+        if let file = FilesMessage(json: json) {
+            print("DownloadConnection[\(address)]: \(file.type)")
+            switch file.type {
+            case .request(let name):
+                let test = "/home/zane/.scribe/test"
+                let path: FilePath = FilePath(test)
+                do {
+                    let fh = try await FileSystem.shared.openFile(
+                        forReadingAt: path)
+
+                    if let info = try? await fh.info() {
+                        if var data = try? await fh.readToEnd(
+                            maximumSizeAllowed: .bytes(info.size))
+                        {
+                            if let str = data.readString(length: Int(info.size))
+                            {
+                                let msg = ServerMessage(upload: str)
+                                try? await writer(msg.json)
+                            }
+                        }
+                    }
+                    try await fh.close()
+                    print("File: \(name) sent")
+                } catch {
+                    print(error.localizedDescription)
+                    print("un able to send \(name)")
+                }
+            case .file(data:):
+                ()
+            }
+        } else {
+            print("DownloadConnection[\(address)]: \(json)")
+        }
     }
 }

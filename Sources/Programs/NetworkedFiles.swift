@@ -49,8 +49,6 @@ public actor NetworkedFiles: Program {
             case .ctrlC:
                 switch self.state {
                 case .connected(let b, _):
-                    let dis = ClientMessage(disconnect: "")
-                    try? await b.client.write(msg: dis.json)
                     print("closing \(b)")
                     self.state = .ready
                 case .ready:
@@ -67,7 +65,7 @@ public actor NetworkedFiles: Program {
                 switch self.state {
                 case .connected(let client, _):
                     // downlaod message
-                    let msg = ClientMessage(download: "Zane was here")
+                    let msg = FilesMessage(request: "Zane was here")
                     do {
                         try await client.client.write(msg: msg.json)
                         print("Message sent")
