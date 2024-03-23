@@ -32,17 +32,24 @@ actor Reciever {
             rsp = ServerMessage()
         case let .ascii(b, maxX: x, maxY: y):
             if let code = AsciiKeyCode.decode(keyboard: b) {
-                switch code {
-                case .ctrlC:
+                await self.scribe.command(.key(code), x, y)
+                switch await self.scribe.state {
+                case .running:
+                    rsp = await ServerMessage(frame: self.scribe.frame())
+                case .shutdown:
                     rsp = ServerMessage()
-                default:
-                    rsp = ServerMessage(frame: Frame(x, y))
                 }
             } else {
                 rsp = ServerMessage()
             }
         case let .connect(_, maxX: x, maxY: y):
-            rsp = ServerMessage(frame: Frame(x, y))
+            await self.scribe.command(.hello, x, y)
+            switch await self.scribe.state {
+            case .running:
+                rsp = await ServerMessage(frame: self.scribe.frame())
+            case .shutdown:
+                rsp = ServerMessage()
+            }
         }
         print(msg.json)
         try await writer(rsp.json)
