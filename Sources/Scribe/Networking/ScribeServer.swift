@@ -78,7 +78,7 @@ func listen(on host: String, _ port: Int, _ programs: [any Program.Type])
                     else {
                         return
                     }
-                    let test = Reciever("\(remoteAddress)", programs)
+                    let reciever = Reciever("\(remoteAddress)", programs)
                     try await connection.executeThenClose {
                         inbound, outbound in
                         print("[\(remoteAddress)] connected")
@@ -88,9 +88,9 @@ func listen(on host: String, _ port: Int, _ programs: [any Program.Type])
                             try await outbound.write(json)
                         }
 
-                        await test.setWriter(writer(_:))
+                        await reciever.setWriter(writer(_:))
                         for try await msg in inbound {
-                            try await test.read(msg)
+                            try await reciever.read(msg)
                         }
                         print("[\(remoteAddress)] disconnected")
                     }
