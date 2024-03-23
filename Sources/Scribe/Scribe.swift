@@ -27,6 +27,19 @@ private func buildDate(_ programs: [any Program.Type], _ address: String)
     return data
 }
 
+struct ScribeBlock: Block {
+
+    let address: String
+    let programs: [any Program.Type]
+
+    var component: some Block {
+        Text(address).select()
+        for p in programs {
+            Text("\(p)")
+        }
+    }
+}
+
 actor Scribe {
 
     private let address: String
@@ -35,12 +48,14 @@ actor Scribe {
 
     private(set) var state: ScribeState
     private var _state: IntenralState
+    private var blockState: BlockState
 
     private var page: Page
     private var x: Int = 80
     private var y: Int = 24
 
     func frame() async -> Frame {
+        // return Page(self.blockState.block).renderWindow(x, y)
         switch self._state {
         case .ready:
             page.renderWindow(x, y)
@@ -57,11 +72,14 @@ actor Scribe {
         self._state = .ready
         let data = buildDate(programs, address)
         self.page = Page(data)
+        let b = ScribeBlock(address: address, programs: programs)
+        self.blockState = BlockState(block: b)
     }
 
     func command(_ cmd: ScribeCommand, _ x: Int, _ y: Int) async {
         self.x = x
         self.y = y
+        // self.blockState.press()
         switch (self.state, self._state, cmd) {
         case (.running, .ready, .key(.ctrlC)):
             self.state = .shutdown

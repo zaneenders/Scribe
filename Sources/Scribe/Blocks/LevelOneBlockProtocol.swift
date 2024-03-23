@@ -5,6 +5,7 @@ protocol LevelOneBlock {
 enum LevelOneBlockType {
     case array
     case button
+    case text
     case tuple
 }
 
