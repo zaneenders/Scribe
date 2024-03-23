@@ -89,6 +89,7 @@ extension ScribeServer {
                 let connection = Connection(
                     programs, "\(address)", inbound, outbound)
                 try await connection.mainloop()
+                print("goodbye")
             }
         }
     }
@@ -136,15 +137,45 @@ public func other(_ host: String, _ port: Int) async throws {
         try await otherChannel.executeThenClose { inbound in
             for try await connection in inbound {
                 group.addTask {
-
+                    let test = Reciever()
                     try await connection.executeThenClose {
                         inbound, outbound in
-                        for try await msg in inbound {
-                            print(msg)
+                        print("connected")
+
+                        @Sendable
+                        func writer(_ json: String) async throws {
+                            try await outbound.write(json)
                         }
+
+                        await test.setWrter(writer(_:))
+                        for try await msg in inbound {
+                            try await test.read(msg)
+                        }
+                        print("disconnected")
                     }
                 }
             }
         }
+    }
+}
+
+actor Reciever {
+    var writer: ((String) async throws -> Void)!
+    init() {
+        print("test here")
+    }
+    deinit {
+        print("test gone")
+    }
+
+    func setWrter(_ writer: @Sendable @escaping (String) async throws -> Void) {
+        self.writer = writer
+        print("writer set")
+    }
+
+    func read(_ str: String) async throws {
+        print(str)
+        let msg = ServerMessage()
+        try await writer(msg.json)
     }
 }
