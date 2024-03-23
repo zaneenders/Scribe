@@ -74,7 +74,7 @@ extension ScribeServer {
             if true {
                 group.addTask {
                     // Crash if server does not have local address
-                    try? await other(host, port + 10)
+                    try? await other(host, port + 10, programs)
                 }
             }
         }
@@ -96,7 +96,9 @@ extension ScribeServer {
 }
 
 // TODO how do I start this at run time and turn it off at runtime
-public func other(_ host: String, _ port: Int) async throws {
+public func other(_ host: String, _ port: Int, _ programs: [any Program.Type])
+    async throws
+{
     let eventLoopGroup: MultiThreadedEventLoopGroup =
         MultiThreadedEventLoopGroup(numberOfThreads: 2)
     let bootstrap = ServerBootstrap(group: eventLoopGroup)
@@ -137,7 +139,7 @@ public func other(_ host: String, _ port: Int) async throws {
         try await otherChannel.executeThenClose { inbound in
             for try await connection in inbound {
                 group.addTask {
-                    let test = Reciever()
+                    let test = Reciever("\(localAddress)", programs)
                     try await connection.executeThenClose {
                         inbound, outbound in
                         print("connected")
@@ -156,26 +158,5 @@ public func other(_ host: String, _ port: Int) async throws {
                 }
             }
         }
-    }
-}
-
-actor Reciever {
-    var writer: ((String) async throws -> Void)!
-    init() {
-        print("test here")
-    }
-    deinit {
-        print("test gone")
-    }
-
-    func setWrter(_ writer: @Sendable @escaping (String) async throws -> Void) {
-        self.writer = writer
-        print("writer set")
-    }
-
-    func read(_ str: String) async throws {
-        print(str)
-        let msg = ServerMessage()
-        try await writer(msg.json)
     }
 }

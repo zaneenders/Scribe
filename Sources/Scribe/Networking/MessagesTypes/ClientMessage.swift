@@ -25,12 +25,20 @@ public struct ClientMessage: Codable {
         self.command = .connect(connect, maxX: maxX, maxY: maxY)
     }
 
-    public init(json: String) {
-        let data = json.data(
-            using: .utf8)!
+    public init?(json: String) {
+        guard
+            let data = json.data(
+                using: .utf8)
+        else {
+            return nil
+        }
         let decoder = JSONDecoder()
-        let msg: ClientMessage = try! decoder.decode(
-            ClientMessage.self, from: data)
+        guard
+            let msg: ClientMessage = try? decoder.decode(
+                ClientMessage.self, from: data)
+        else {
+            return nil
+        }
         self = msg
     }
 
