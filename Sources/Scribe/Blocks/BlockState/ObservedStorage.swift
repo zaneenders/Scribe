@@ -1,7 +1,5 @@
 import Observation
 
-public protocol ScribeObservable: Observable {}
-
 final class ObservedStorage<Value>: Observation.Observable {
 
     @ObservationIgnored

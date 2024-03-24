@@ -22,7 +22,7 @@ public actor BlockProgram: Program {
 
     private var block: any Block = Main()
 
-    class StateObject: ScribeObservable {
+    class StateObject: Observable {
         var name: String = "Zane"
     }
 

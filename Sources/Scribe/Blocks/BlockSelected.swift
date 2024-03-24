@@ -6,7 +6,7 @@ extension Page {
 }
 
 extension Block {
-    public func select() -> some Block {
+    public func selected() -> some Block {
         SelectedBlock(wrapped: self)
     }
 }

@@ -1,11 +1,11 @@
 actor Reciever {
 
     var writer: ((String) async throws -> Void)!
-    private var scribe: Scribe
+    private var scribe: BlockScribe
     private let address: String
 
     init(_ address: String, _ programs: [any Program.Type]) {
-        self.scribe = Scribe(address, programs)
+        self.scribe = BlockScribe(address, programs)
         self.address = address
         print("Reciever[\(address)] init")
     }
