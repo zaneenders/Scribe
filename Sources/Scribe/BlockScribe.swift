@@ -31,10 +31,12 @@ actor BlockScribe {
             switch k {
             case .ctrlC:
                 self.state = .shutdown
+            case .lowerCaseJ:
+                print("down")
+                self.blockState.down()
             default:
                 ()
             }
-            self.blockState.press()
         }
         self.blockState.parse()
     }

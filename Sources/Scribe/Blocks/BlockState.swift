@@ -53,6 +53,10 @@ struct BlockState {
         self.dag = parse(self.block)
     }
 
+    mutating func down() {
+        self.dag = moveDown(self.dag)
+    }
+
     private func flattenArrays(_ node: L2Node) -> L2Node {
         switch node {
         case .selected(let n):
@@ -130,6 +134,21 @@ struct BlockState {
         case tuple(Node, Node)
         case selected(Node)
         case composed(Node)
+    }
+
+    private func moveDown(_ block: L2Node) -> L2Node {
+        switch block {
+        case .text, .button:
+            return block
+        case .array(let arr):
+            var out: [L2Node] = []
+            for n in arr {
+                out.append(moveDown(n))
+            }
+            return .array(out)
+        case .selected(let s):
+            return moveDown(s)
+        }
     }
 
     private mutating func parse(_ block: some Block) -> L2Node {
