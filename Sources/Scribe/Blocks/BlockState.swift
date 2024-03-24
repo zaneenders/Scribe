@@ -39,15 +39,74 @@ struct BlockState {
 
     mutating func press() {
         onlyPress(self.block)
+        let dag = parse(self.block)
+        print(dag.description)
+        layout(dag)
     }
 
-    private mutating func onlyPress(_ block: some Block) {
+    private func layout(_ node: Node) {
+        switch node {
+        case .composed(let n):
+            layout(n)
+        case .selected(let n):
+            layout(n)
+        case let .tuple(l, r):
+            layout(l)
+            layout(r)
+        case .array(let arr):
+            for n in arr {
+                layout(n)
+            }
+        case .button:
+            ()
+        case .text:
+            ()
+        }
+    }
+
+    indirect enum Node {
+        case text
+        case button
+        case array([Node])
+        case tuple(Node, Node)
+        case selected(Node)
+        case composed(Node)
+    }
+
+    private mutating func parse(_ block: some Block) -> Node {
         if !selected {
             if let _ = block as? any SelectedBlockType {
-                selected = true
-                print(block)
+                self.selected = true
+                return .selected(parse(block.component))
             }
         }
+        if let l1 = block as? LevelOneBlock {
+            switch l1.type {
+            case .text:
+                let _ = l1 as! Text
+                return .text
+            case .button:
+                let _ = l1 as! Button
+                return .button
+            case .array:
+                let a = l1 as! any ArrayBlocks
+                var nodes: [Node] = []
+                for b in a._blocks {
+                    nodes.append(parse(b))
+                }
+                return .array(nodes)
+            case .tuple:
+                let t = l1 as! TupleBlock
+                let f = parse(t.first)
+                let s = parse(t.second)
+                return .tuple(f, s)
+            }
+        } else {
+            return .composed(parse(block.component))
+        }
+    }
+
+    private func onlyPress(_ block: some Block) {
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
             case .text:
@@ -68,6 +127,35 @@ struct BlockState {
         } else {
             onlyPress(block.component)
         }
+    }
+}
+
+extension BlockState.Node: CustomStringConvertible {
+    var description: String {
+        var out = ""
+        switch self {
+        case .composed(let n):
+            out += " COMPOSED{ \(n.description) } "
+        case .selected(let n):
+            out += " SELECTED[ \(n.description) ] "
+        case let .tuple(l, r):
+            out += "Tuple: {\n "
+            out += l.description
+            out += " , "
+            out += r.description
+            out += " }\n"
+        case .array(let arr):
+            out += "ARRAY: [\n"
+            for n in arr {
+                out += "\(n.description), "
+            }
+            out += "]\n"
+        case .button:
+            out += "[BUTTON]"
+        case .text:
+            out += "(TEXT)"
+        }
+        return out
     }
 }
 
