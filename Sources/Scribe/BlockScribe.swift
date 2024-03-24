@@ -7,16 +7,15 @@ actor BlockScribe {
     private var x: Int = 80
     private var y: Int = 24
 
-    private var page: Page
-    private var block: any Block
+    private var blockState: BlockState
 
     class StateObject: Observable {
         var name: String = "Zane"
     }
 
     public init(_ address: String, _ programs: [any Program.Type]) {
-        self.block = ScribeBlock(address: address, programs: programs)
-        self.page = Page(block)
+        let block = ScribeBlock(address: address, programs: programs)
+        self.blockState = BlockState(block)
     }
 
     public func command(
@@ -35,15 +34,14 @@ actor BlockScribe {
             default:
                 ()
             }
-            onlyPress(block)
+            blockState.press()
         }
     }
 
     private func update() async {
         withObservationTracking(
             {
-                let contents: [[String]] = unfold(block).map { [$0] }
-                self.page = Page(contents)
+                self.frame = blockState.buildFrame(self.x, self.y)
                 // Maybe we can change to pushed updates instead of pull
             },
             onChange: {
@@ -54,7 +52,7 @@ actor BlockScribe {
     }
 
     public func frame() async -> Frame {
-        page.renderWindow(x, y)
+        self.frame
     }
 }
 

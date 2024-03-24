@@ -27,6 +27,16 @@ struct BlockState {
     let block: any Block
     var selected = false  // TODO record parse path
 
+    init(_ block: any Block) {
+        self.block = block
+    }
+
+    func buildFrame(_ x: Int, _ y: Int) -> Frame {
+        let contents: [[String]] = unfold(block).map { [$0] }
+        let page = Page(contents)
+        return page.renderWindow(x, y)
+    }
+
     mutating func press() {
         onlyPress(self.block)
     }
