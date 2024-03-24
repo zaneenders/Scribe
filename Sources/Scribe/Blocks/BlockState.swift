@@ -31,7 +31,7 @@ extension BlockState: CustomStringConvertible {
 
 struct BlockState {
     let block: any Block
-    private var dag: Node!
+    private var dag: L2Node!
 
     init(_ block: any Block) {
         self.block = block
@@ -51,6 +51,49 @@ struct BlockState {
     mutating func press() {
         onlyPress(self.block)
         self.dag = parse(self.block)
+    }
+
+    private func flattenArrays(_ node: L2Node) -> L2Node {
+        switch node {
+        case .selected(let n):
+            return .selected(flattenArrays(n))
+        case .array(let arr):
+            var out: [L2Node] = []
+            for n in arr {
+                let c = flattenArrays(n)
+                switch c {
+                case .selected, .text, .button:
+                    out.append(c)
+                case .array(let _arr):
+                    out += _arr
+                }
+            }
+            return .array(out)
+        case .button:
+            return .button
+        case .text:
+            return .text
+        }
+    }
+
+    private func flattenTuples(_ node: Node) -> L2Node {
+        switch node {
+        case .composed(let n):
+            return flattenTuples(n)
+        case .selected(let n):
+            return .selected(flattenTuples(n))
+        case let .tuple(l, r):
+            return .array([
+                flattenTuples(l),
+                flattenTuples(r),
+            ])
+        case .array(let arr):
+            return .array(arr.compactMap { flattenTuples($0) })
+        case .button:
+            return .button
+        case .text:
+            return .text
+        }
     }
 
     private func layout(_ node: Node) {
@@ -73,6 +116,13 @@ struct BlockState {
         }
     }
 
+    indirect enum L2Node: Codable {
+        case text
+        case button
+        case array([L2Node])
+        case selected(L2Node)
+    }
+
     indirect enum Node: Codable {
         case text
         case button
@@ -82,9 +132,15 @@ struct BlockState {
         case composed(Node)
     }
 
-    private mutating func parse(_ block: some Block) -> Node {
+    private mutating func parse(_ block: some Block) -> L2Node {
+        let l1 = _parse(block)
+        let l2 = flattenTuples(l1)
+        return flattenArrays(l2)
+    }
+
+    private mutating func _parse(_ block: some Block) -> Node {
         if let _ = block as? any SelectedBlockType {
-            return .selected(parse(block.component))
+            return .selected(_parse(block.component))
         }
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
@@ -98,17 +154,17 @@ struct BlockState {
                 let a = l1 as! any ArrayBlocks
                 var nodes: [Node] = []
                 for b in a._blocks {
-                    nodes.append(parse(b))
+                    nodes.append(_parse(b))
                 }
                 return .array(nodes)
             case .tuple:
                 let t = l1 as! TupleBlock
-                let f = parse(t.first)
-                let s = parse(t.second)
+                let f = _parse(t.first)
+                let s = _parse(t.second)
                 return .tuple(f, s)
             }
         } else {
-            return .composed(parse(block.component))
+            return .composed(_parse(block.component))
         }
     }
 
@@ -133,6 +189,31 @@ struct BlockState {
         } else {
             onlyPress(block.component)
         }
+    }
+}
+
+extension BlockState.L2Node: CustomStringConvertible {
+    var description: String {
+        var out = ""
+        switch self {
+        case .selected(let n):
+            out += "SELECTED[ \(n.description) ]"
+        case .array(let arr):
+            out += "ARRAY: ["
+            for (i, n) in arr.enumerated() {
+                if i == arr.count - 1 {
+                    out += "\(n.description)"
+                } else {
+                    out += "\(n.description)"
+                }
+            }
+            out += "]"
+        case .button:
+            out += "\n[BUTTON]"
+        case .text:
+            out += "\n(TEXT)"
+        }
+        return out
     }
 }
 
