@@ -32,13 +32,18 @@ actor BlockScribe {
             case .ctrlC:
                 self.state = .shutdown
             case .lowerCaseJ:
-                print("down")
                 self.blockState.down()
+                print("down")
+                print(self.blockState.description)
+                print("down")
             default:
                 ()
             }
         }
+        print("Parse")
         self.blockState.parse()
+        print(self.blockState.description)
+        print("Parse")
     }
 
     private func update() async {
@@ -55,7 +60,6 @@ actor BlockScribe {
     }
 
     public func frame() async -> Frame {
-        print(self.blockState.description)
         return self.frame
     }
 }

@@ -142,13 +142,53 @@ struct BlockState {
             return block
         case .array(let arr):
             var out: [L2Node] = []
-            for n in arr {
-                out.append(moveDown(n))
+            var found = false
+            for c in arr {
+                switch peek(selected: c) {
+                case .selected:
+                    // found = true
+                    let n = moveDown(c)
+                    print("HETE\(n)")
+                    out.append(moveDown(n))
+                default:
+                    if found {
+                        found = false
+                        let n = moveDown(c)
+                        out.append(.selected(n))
+                    } else {
+                        out.append(c)
+                    }
+                }
             }
             return .array(out)
         case .selected(let s):
             return moveDown(s)
         }
+    }
+
+    enum PeekNode {
+        case selected
+        case text
+        case button
+        case array
+    }
+
+    private func peek(selected block: L2Node) -> PeekNode {
+        switch block {
+        case .button:
+            return .button
+        case .text:
+            return .text
+        case .array:
+            return .array
+        case .selected:
+            return .selected
+        }
+    }
+
+    private func findSelected() -> [PeekNode] {
+        #warning("You left off here")
+        return []  // return a trial of nodes to the selected node
     }
 
     private mutating func parse(_ block: some Block) -> L2Node {
@@ -157,9 +197,14 @@ struct BlockState {
         return flattenArrays(l2)
     }
 
+    var selected = false
+
     private mutating func _parse(_ block: some Block) -> Node {
-        if let _ = block as? any SelectedBlockType {
-            return .selected(_parse(block.component))
+        if !selected {
+            if let _ = block as? any SelectedBlockType {
+                selected = true
+                return .selected(_parse(block.component))
+            }
         }
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
