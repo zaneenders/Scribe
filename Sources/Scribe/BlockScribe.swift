@@ -34,8 +34,9 @@ actor BlockScribe {
             default:
                 ()
             }
-            blockState.press()
+            self.blockState.press()
         }
+        self.blockState.parse()
     }
 
     private func update() async {
@@ -52,7 +53,8 @@ actor BlockScribe {
     }
 
     public func frame() async -> Frame {
-        self.frame
+        print(self.blockState.description)
+        return self.frame
     }
 }
 

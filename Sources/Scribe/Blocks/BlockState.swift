@@ -23,12 +23,19 @@ protocol SelectedBlockType {
     var wrapped: B { get }
 }
 
+extension BlockState: CustomStringConvertible {
+    var description: String {
+        self.dag.description
+    }
+}
+
 struct BlockState {
     let block: any Block
-    var selected = false  // TODO record parse path
+    private var dag: Node!
 
     init(_ block: any Block) {
         self.block = block
+        self.dag = parse(self.block)
     }
 
     func buildFrame(_ x: Int, _ y: Int) -> Frame {
@@ -37,11 +44,13 @@ struct BlockState {
         return page.renderWindow(x, y)
     }
 
+    mutating func parse() {
+        self.dag = parse(self.block)
+    }
+
     mutating func press() {
         onlyPress(self.block)
-        let dag = parse(self.block)
-        print(dag.description)
-        layout(dag)
+        self.dag = parse(self.block)
     }
 
     private func layout(_ node: Node) {
@@ -64,7 +73,7 @@ struct BlockState {
         }
     }
 
-    indirect enum Node {
+    indirect enum Node: Codable {
         case text
         case button
         case array([Node])
@@ -74,11 +83,8 @@ struct BlockState {
     }
 
     private mutating func parse(_ block: some Block) -> Node {
-        if !selected {
-            if let _ = block as? any SelectedBlockType {
-                self.selected = true
-                return .selected(parse(block.component))
-            }
+        if let _ = block as? any SelectedBlockType {
+            return .selected(parse(block.component))
         }
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
@@ -135,25 +141,28 @@ extension BlockState.Node: CustomStringConvertible {
         var out = ""
         switch self {
         case .composed(let n):
-            out += " COMPOSED{ \(n.description) } "
+            out += "COMPOSED{ \(n.description) }"
         case .selected(let n):
-            out += " SELECTED[ \(n.description) ] "
+            out += "SELECTED[ \(n.description) ]"
         case let .tuple(l, r):
-            out += "Tuple: {\n "
-            out += l.description
-            out += " , "
-            out += r.description
-            out += " }\n"
+            out += "Tuple: {"
+            out += "\(l.description)"
+            out += "\(r.description)"
+            out += "}"
         case .array(let arr):
-            out += "ARRAY: [\n"
-            for n in arr {
-                out += "\(n.description), "
+            out += "ARRAY: ["
+            for (i, n) in arr.enumerated() {
+                if i == arr.count - 1 {
+                    out += "\(n.description)"
+                } else {
+                    out += "\(n.description)"
+                }
             }
-            out += "]\n"
+            out += "]"
         case .button:
-            out += "[BUTTON]"
+            out += "\n[BUTTON]"
         case .text:
-            out += "(TEXT)"
+            out += "\n(TEXT)"
         }
         return out
     }
