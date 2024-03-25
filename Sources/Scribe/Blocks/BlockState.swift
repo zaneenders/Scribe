@@ -36,6 +36,9 @@ struct BlockState {
     init(_ block: any Block) {
         self.block = block
         self.dag = parse(self.block)
+        print("\(#function)")
+        print(self.dag.description)
+        print("\(#function)")
     }
 
     func buildFrame(_ x: Int, _ y: Int) -> Frame {
@@ -66,7 +69,10 @@ struct BlockState {
             for n in arr {
                 let c = flattenArrays(n)
                 switch c {
-                case .selected, .text, .button:
+                case .selected:
+                    print("\(#function) SELECTED FOUND")
+                    out.append(c)
+                case .text, .button:
                     out.append(c)
                 case .array(let _arr):
                     out += _arr
@@ -148,7 +154,7 @@ struct BlockState {
                 case .selected:
                     // found = true
                     let n = moveDown(c)
-                    print("HETE\(n)")
+                    print("SELECTED FOUND: \(n)")
                     out.append(moveDown(n))
                 default:
                     if found {
@@ -186,15 +192,56 @@ struct BlockState {
         }
     }
 
-    private func findSelected() -> [PeekNode] {
-        #warning("You left off here")
-        return []  // return a trial of nodes to the selected node
+    private func isSelected(_ block: L2Node) -> Bool {
+        switch peek(selected: block) {
+        case .button, .text, .array:
+            return false
+        case .selected:
+            return true
+        }
+    }
+
+    enum PathNode {
+        indirect case selected(PathNode)
+        case text
+        case button
+        case array(index: Int)
+    }
+
+    private func findSelected(_ block: L2Node) -> [PathNode] {
+        switch block {
+        case .selected(let n):
+            switch n {
+            case .selected:
+                fatalError("Double selected: \(#function)")
+            case .button:
+                return [.selected(.button)]
+            case .text:
+                return [.selected(.text)]
+            case .array:
+                fatalError("can't selecte array right now: \(#function)")
+            }
+        case .text, .button:
+            return []
+        case .array(let arr):
+            for (i, n) in arr.enumerated() {
+                var path = findSelected(n)
+                if path.count > 0 {
+                    path.insert(.array(index: i), at: 0)
+                    return path
+                }
+            }
+            return []
+        }
     }
 
     private mutating func parse(_ block: some Block) -> L2Node {
         let l1 = _parse(block)
         let l2 = flattenTuples(l1)
-        return flattenArrays(l2)
+        let out = flattenArrays(l2)
+        let path = findSelected(out)
+        print("SELECTED Path: \(path)")
+        return out
     }
 
     var selected = false
@@ -202,6 +249,7 @@ struct BlockState {
     private mutating func _parse(_ block: some Block) -> Node {
         if !selected {
             if let _ = block as? any SelectedBlockType {
+                print("\(#function) SELECTED FOUND")
                 selected = true
                 return .selected(_parse(block.component))
             }
