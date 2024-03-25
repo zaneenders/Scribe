@@ -32,10 +32,13 @@ extension BlockState: CustomStringConvertible {
 struct BlockState {
     let block: any Block
     private var dag: L2Node!
+    private var selectedPath: [PathNode]
 
     init(_ block: any Block) {
         self.block = block
+        self.selectedPath = []
         self.dag = parse(self.block)
+        self.selectedPath = findSelected(self.dag)
         print("\(#function)")
         print(self.dag.description)
         print("\(#function)")
@@ -48,12 +51,12 @@ struct BlockState {
     }
 
     mutating func parse() {
-        self.dag = parse(self.block)
+        self.dag = parse(self.block, self.selectedPath)
     }
 
     mutating func press() {
         onlyPress(self.block)
-        self.dag = parse(self.block)
+        self.dag = parse(self.block, self.selectedPath)
     }
 
     mutating func down() {
@@ -69,10 +72,7 @@ struct BlockState {
             for n in arr {
                 let c = flattenArrays(n)
                 switch c {
-                case .selected:
-                    print("\(#function) SELECTED FOUND")
-                    out.append(c)
-                case .text, .button:
+                case .selected, .text, .button:
                     out.append(c)
                 case .array(let _arr):
                     out += _arr
@@ -143,6 +143,7 @@ struct BlockState {
     }
 
     private func moveDown(_ block: L2Node) -> L2Node {
+        #warning("Update selected path instead of L2Node tree")
         switch block {
         case .text, .button:
             return block
@@ -152,9 +153,8 @@ struct BlockState {
             for c in arr {
                 switch peek(selected: c) {
                 case .selected:
-                    // found = true
+                    found = true
                     let n = moveDown(c)
-                    print("SELECTED FOUND: \(n)")
                     out.append(moveDown(n))
                 default:
                     if found {
@@ -219,7 +219,7 @@ struct BlockState {
             case .text:
                 return [.selected(.text)]
             case .array:
-                fatalError("can't selecte array right now: \(#function)")
+                fatalError("can't select array right now: \(#function)")
             }
         case .text, .button:
             return []
@@ -235,21 +235,47 @@ struct BlockState {
         }
     }
 
-    private mutating func parse(_ block: some Block) -> L2Node {
+    private func updateSelected(_ node: L2Node, _ prev: [PathNode]) -> L2Node {
+        print("\(#function) \(prev)")
+        guard let first = prev.first else {
+            print("empty prev path")
+            return node
+        }
+        let rest = prev.dropFirst()
+        switch (node, first) {
+        case (let n, .selected(let s)):
+            // TODO check that n and s match
+            return .selected(n)
+            print("selcted: \(n) \(first)")
+        case (.array(let nodes), .array(index: let i)):
+            guard nodes.count > i else {
+                print("array index fail")
+                return node
+            }
+            let n = updateSelected(nodes[i], Array(rest))
+            var copy = nodes
+            copy[i] = n
+            return .array(copy)
+        default:
+            return node
+        }
+    }
+
+    private mutating func parse(_ block: some Block, _ prev: [PathNode] = [])
+        -> L2Node
+    {
         let l1 = _parse(block)
         let l2 = flattenTuples(l1)
         let out = flattenArrays(l2)
-        let path = findSelected(out)
-        print("SELECTED Path: \(path)")
-        return out
+        let new = updateSelected(out, prev)
+        return new
     }
 
-    var selected = false
+    private var selected = false
 
     private mutating func _parse(_ block: some Block) -> Node {
         if !selected {
             if let _ = block as? any SelectedBlockType {
-                print("\(#function) SELECTED FOUND")
                 selected = true
                 return .selected(_parse(block.component))
             }
