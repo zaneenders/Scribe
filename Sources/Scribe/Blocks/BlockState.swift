@@ -38,7 +38,7 @@ struct BlockState {
         self.block = block
         self.selectedPath = []
         self.dag = parse(self.block)
-        self.selectedPath = findSelected(self.dag)
+        self.selectedPath = updateSelected(self.dag)
         print("\(#function)")
         print(self.dag.description)
         print("\(#function)")
@@ -60,7 +60,13 @@ struct BlockState {
     }
 
     mutating func down() {
-        self.dag = moveDown(self.dag)
+        print("\(#function): 1")
+        print(self.selectedPath)
+        self.selectedPath = moveDown(self.selectedPath)
+        print(self.selectedPath)
+        print("\(#function): 2")
+        self.dag = updateSelected(self.dag, self.selectedPath)
+        print("\(#function): 3")
     }
 
     private func flattenArrays(_ node: L2Node) -> L2Node {
@@ -142,8 +148,28 @@ struct BlockState {
         case composed(Node)
     }
 
+    private func moveDown(_ path: [PathNode]) -> [PathNode] {
+        guard let first = path.first else {
+            return []
+        }
+        var copy = path
+        let rest = copy.dropFirst()
+        switch first {
+        case .text, .button:
+            return [first]
+        case .array(let index):
+            switch rest.first {
+            case .none, .text, .button, .array:
+                return [first] + moveDown(Array(rest))
+            case .selected:
+                return [.array(index: index + 1)] + moveDown(Array(rest))
+            }
+        case .selected:
+            return path
+        }
+    }
+
     private func moveDown(_ block: L2Node) -> L2Node {
-        #warning("Update selected path instead of L2Node tree")
         switch block {
         case .text, .button:
             return block
@@ -202,22 +228,20 @@ struct BlockState {
     }
 
     enum PathNode {
-        indirect case selected(PathNode)
+        case selected
         case text
         case button
         case array(index: Int)
     }
 
-    private func findSelected(_ block: L2Node) -> [PathNode] {
+    private func updateSelected(_ block: L2Node) -> [PathNode] {
         switch block {
         case .selected(let n):
             switch n {
             case .selected:
                 fatalError("Double selected: \(#function)")
-            case .button:
-                return [.selected(.button)]
-            case .text:
-                return [.selected(.text)]
+            case .button, .text:
+                return [.selected]
             case .array:
                 fatalError("can't select array right now: \(#function)")
             }
@@ -225,7 +249,7 @@ struct BlockState {
             return []
         case .array(let arr):
             for (i, n) in arr.enumerated() {
-                var path = findSelected(n)
+                var path = updateSelected(n)
                 if path.count > 0 {
                     path.insert(.array(index: i), at: 0)
                     return path
@@ -243,7 +267,7 @@ struct BlockState {
         }
         let rest = prev.dropFirst()
         switch (node, first) {
-        case (let n, .selected(let s)):
+        case (let n, .selected):
             // TODO check that n and s match
             return .selected(n)
             print("selcted: \(n) \(first)")
