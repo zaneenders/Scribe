@@ -29,6 +29,30 @@ extension BlockState: CustomStringConvertible {
     }
 }
 
+extension Page {
+
+    init(_ node: L2Node) {
+        self = Page(Page.getStrings(node))
+    }
+
+    private static func getStrings(_ node: L2Node) -> [[String]] {
+        var out: [[String]] = []
+        switch node {
+        case .selected(let n):
+            out.append(["SELECTED"])
+        case .array(let arr):
+            for n in arr {
+                out += getStrings(n)
+            }
+        case .button:
+            out.append(["[BUTTON]"])
+        case .text:
+            out.append(["(TEXT)"])
+        }
+        return out
+    }
+}
+
 struct BlockState {
     let block: any Block
     private var dag: L2Node!
@@ -39,14 +63,13 @@ struct BlockState {
         self.selectedPath = []
         self.dag = parse(self.block)
         self.selectedPath = updateSelected(self.dag)
-        print("\(#function)")
-        print(self.dag.description)
-        print("\(#function)")
     }
 
     func buildFrame(_ x: Int, _ y: Int) -> Frame {
-        let contents: [[String]] = unfold(block).map { [$0] }
-        let page = Page(contents)
+        let read = read(self.block)
+        print(read)
+        //let contents: [[String]] = unfold(self.block).map { [$0] }
+        let page = Page(read)
         return page.renderWindow(x, y)
     }
 
@@ -60,13 +83,9 @@ struct BlockState {
     }
 
     mutating func down() {
-        print("\(#function): 1")
-        print(self.selectedPath)
+        #warning("Does not mutate block so doesn't trigger buildFrame")
         self.selectedPath = moveDown(self.selectedPath)
-        print(self.selectedPath)
-        print("\(#function): 2")
         self.dag = updateSelected(self.dag, self.selectedPath)
-        print("\(#function): 3")
     }
 
     private func flattenArrays(_ node: L2Node) -> L2Node {
@@ -130,13 +149,6 @@ struct BlockState {
         case .text:
             ()
         }
-    }
-
-    indirect enum L2Node: Codable {
-        case text
-        case button
-        case array([L2Node])
-        case selected(L2Node)
     }
 
     indirect enum Node: Codable {
@@ -260,7 +272,6 @@ struct BlockState {
     }
 
     private func updateSelected(_ node: L2Node, _ prev: [PathNode]) -> L2Node {
-        print("\(#function) \(prev)")
         guard let first = prev.first else {
             print("empty prev path")
             return node
@@ -270,7 +281,6 @@ struct BlockState {
         case (let n, .selected):
             // TODO check that n and s match
             return .selected(n)
-            print("selcted: \(n) \(first)")
         case (.array(let nodes), .array(index: let i)):
             guard nodes.count > i else {
                 print("array index fail")
@@ -282,6 +292,43 @@ struct BlockState {
             return .array(copy)
         default:
             return node
+        }
+    }
+
+    private func read(_ block: some Block, _ prev: [PathNode] = [])
+        -> L2Node
+    {
+        let l1 = read0(block)
+        let l2 = flattenTuples(l1)
+        let out = flattenArrays(l2)
+        let new = updateSelected(out, prev)
+        return new
+    }
+
+    private func read0(_ block: some Block) -> Node {
+        if let l1 = block as? LevelOneBlock {
+            switch l1.type {
+            case .text:
+                let _ = l1 as! Text
+                return .text
+            case .button:
+                let _ = l1 as! Button
+                return .button
+            case .array:
+                let a = l1 as! any ArrayBlocks
+                var nodes: [Node] = []
+                for b in a._blocks {
+                    nodes.append(read0(b))
+                }
+                return .array(nodes)
+            case .tuple:
+                let t = l1 as! TupleBlock
+                let f = read0(t.first)
+                let s = read0(t.second)
+                return .tuple(f, s)
+            }
+        } else {
+            return .composed(read0(block.component))
         }
     }
 
@@ -354,7 +401,14 @@ struct BlockState {
     }
 }
 
-extension BlockState.L2Node: CustomStringConvertible {
+indirect enum L2Node: Codable {
+    case text
+    case button
+    case array([L2Node])
+    case selected(L2Node)
+}
+
+extension L2Node: CustomStringConvertible {
     var description: String {
         var out = ""
         switch self {

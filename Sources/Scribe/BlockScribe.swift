@@ -33,22 +33,19 @@ actor BlockScribe {
                 self.state = .shutdown
             case .lowerCaseJ:
                 self.blockState.down()
-                print("down")
-                print(self.blockState.description)
-                print("down")
+            case .ctrlJ:
+                self.blockState.press()
             default:
                 ()
             }
         }
-        print("Parse")
         self.blockState.parse()
-        print(self.blockState.description)
-        print("Parse")
     }
 
     private func update() async {
         withObservationTracking(
             {
+                print("updating")
                 self.frame = blockState.buildFrame(self.x, self.y)
                 // Maybe we can change to pushed updates instead of pull
             },
@@ -74,7 +71,7 @@ struct Main: Block {
     var component: some Block {
         Button("\(count)") {
             count += 1
-        }
+        }.selected()
         if count.isMultiple(of: 2) {
             Text("Even")
         }
@@ -95,7 +92,7 @@ struct ScribeBlock: Block {
         Button(state.name) {
             state.name += "!"
         }
-        Text(address).selected()
+        Text(address)
         for p in programs {
             Text("\(p)")
         }
