@@ -76,14 +76,37 @@ struct BlockState {
     }
 
     mutating func press() {
-        onlyPress(self.block)
+        print(selectedPath)
+        _press()
         self.dag = parse(self.block, self.selectedPath)
     }
 
+    private mutating func _press() {
+        let l1 = _parse(block)
+        let l2 = flattenTuples(l1)
+        let out = flattenArrays(l2)
+        _press(out, self.selectedPath)
+    }
+
     mutating func down() {
-        #warning("Does not mutate block so doesn't trigger buildFrame")
         self.selectedPath = moveDown(self.selectedPath)
         self.dag = updateSelected(self.dag, self.selectedPath)
+    }
+
+    private func _press(_ node: L2Node, _ path: [PathNode]) {
+        let rest = Array(path.dropFirst())
+        switch node {
+        case .selected(let n):
+            _press(n, rest)
+        case .array(let arr):
+            for n in arr {
+                _press(n, rest)
+            }
+        case .button(_, let a):
+            a()
+        case .text:
+            ()
+        }
     }
 
     private func flattenArrays(_ node: L2Node) -> L2Node {
@@ -120,8 +143,8 @@ struct BlockState {
             ])
         case .array(let arr):
             return .array(arr.compactMap { flattenTuples($0) })
-        case .button(let b):
-            return .button(b)
+        case .button(let b, let a):
+            return .button(b, a)
         case .text(let t):
             return .text(t)
         }
@@ -147,9 +170,9 @@ struct BlockState {
         }
     }
 
-    indirect enum Node: Codable {
+    indirect enum Node {
         case text(String)
-        case button(String)
+        case button(String, () -> Void)
         case array([Node])
         case tuple(Node, Node)
         case selected(Node)
@@ -309,7 +332,7 @@ struct BlockState {
                 return .text(t.text)
             case .button:
                 let b = l1 as! Button
-                return .button(b.label)
+                return .button(b.label, b.action)
             case .array:
                 let a = l1 as! any ArrayBlocks
                 var nodes: [Node] = []
@@ -354,7 +377,7 @@ struct BlockState {
                 return .text(t.text)
             case .button:
                 let b = l1 as! Button
-                return .button(b.label)
+                return .button(b.label, b.action)
             case .array:
                 let a = l1 as! any ArrayBlocks
                 var nodes: [Node] = []
@@ -397,9 +420,9 @@ struct BlockState {
     }
 }
 
-indirect enum L2Node: Codable {
+indirect enum L2Node {
     case text(String)
-    case button(String)
+    case button(String, () -> Void)
     case array([L2Node])
     case selected(L2Node)
 }
