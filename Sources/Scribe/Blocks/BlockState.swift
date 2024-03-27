@@ -66,9 +66,7 @@ struct BlockState {
     }
 
     func buildFrame(_ x: Int, _ y: Int) -> Frame {
-        let read = read(self.block)
-        print(read)
-        //let contents: [[String]] = unfold(self.block).map { [$0] }
+        let read = read(self.block, self.selectedPath)
         let page = Page(read)
         return page.renderWindow(x, y)
     }

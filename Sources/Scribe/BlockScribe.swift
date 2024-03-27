@@ -33,6 +33,8 @@ actor BlockScribe {
                 self.state = .shutdown
             case .lowerCaseJ:
                 self.blockState.down()
+                // movements aren't mutating so need to update manually
+                await update()
             case .ctrlJ:
                 self.blockState.press()
             default:
