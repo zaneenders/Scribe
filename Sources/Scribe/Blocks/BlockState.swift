@@ -44,10 +44,10 @@ extension Page {
             for n in arr {
                 out += getStrings(n)
             }
-        case .button:
-            out.append(["[BUTTON]"])
-        case .text:
-            out.append(["(TEXT)"])
+        case .button(let b):
+            out.append(["[\(b)]"])
+        case .text(let t):
+            out.append([t])
         }
         return out
     }
@@ -102,10 +102,8 @@ struct BlockState {
                 }
             }
             return .array(out)
-        case .button:
-            return .button
-        case .text:
-            return .text
+        case .button, .text:
+            return node
         }
     }
 
@@ -122,10 +120,10 @@ struct BlockState {
             ])
         case .array(let arr):
             return .array(arr.compactMap { flattenTuples($0) })
-        case .button:
-            return .button
-        case .text:
-            return .text
+        case .button(let b):
+            return .button(b)
+        case .text(let t):
+            return .text(t)
         }
     }
 
@@ -150,8 +148,8 @@ struct BlockState {
     }
 
     indirect enum Node: Codable {
-        case text
-        case button
+        case text(String)
+        case button(String)
         case array([Node])
         case tuple(Node, Node)
         case selected(Node)
@@ -307,11 +305,11 @@ struct BlockState {
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
             case .text:
-                let _ = l1 as! Text
-                return .text
+                let t = l1 as! Text
+                return .text(t.text)
             case .button:
-                let _ = l1 as! Button
-                return .button
+                let b = l1 as! Button
+                return .button(b.label)
             case .array:
                 let a = l1 as! any ArrayBlocks
                 var nodes: [Node] = []
@@ -352,11 +350,11 @@ struct BlockState {
         if let l1 = block as? LevelOneBlock {
             switch l1.type {
             case .text:
-                let _ = l1 as! Text
-                return .text
+                let t = l1 as! Text
+                return .text(t.text)
             case .button:
-                let _ = l1 as! Button
-                return .button
+                let b = l1 as! Button
+                return .button(b.label)
             case .array:
                 let a = l1 as! any ArrayBlocks
                 var nodes: [Node] = []
@@ -400,8 +398,8 @@ struct BlockState {
 }
 
 indirect enum L2Node: Codable {
-    case text
-    case button
+    case text(String)
+    case button(String)
     case array([L2Node])
     case selected(L2Node)
 }
