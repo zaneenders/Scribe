@@ -3,6 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "Scribe",
+    platforms: [
+        .macOS("14.0"), .iOS("16.0"), .watchOS("9.0"), .tvOS("16.0"),
+        .visionOS("1.0"),
+    ],
     products: [
         .executable(name: "Client", targets: ["TerminalClient"]),
         .executable(name: "Server", targets: ["Server"]),
