@@ -7,6 +7,5 @@ struct Server: ScribeServer {
         FilesProgram.self,
         ClientProgram.self,
         NetworkedFiles.self,
-        BlockProgram.self,
     ]
 }
