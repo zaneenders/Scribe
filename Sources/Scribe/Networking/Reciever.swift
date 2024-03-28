@@ -48,7 +48,6 @@ actor Reciever {
                 rsp = ServerMessage()
             }
         }
-        print(msg.json)
         try await writer(rsp.json)
     }
 }

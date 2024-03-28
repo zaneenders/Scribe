@@ -76,7 +76,6 @@ struct BlockState {
     }
 
     mutating func press() {
-        print(selectedPath)
         _press()
         self.dag = parse(self.block, self.selectedPath)
     }
@@ -85,7 +84,8 @@ struct BlockState {
         let l1 = _parse(block)
         let l2 = flattenTuples(l1)
         let out = flattenArrays(l2)
-        _press(out, self.selectedPath)
+        let update = updateSelected(out, self.selectedPath)
+        _press(update)
     }
 
     mutating func down() {
@@ -93,18 +93,21 @@ struct BlockState {
         self.dag = updateSelected(self.dag, self.selectedPath)
     }
 
-    private func _press(_ node: L2Node, _ path: [PathNode]) {
-        let rest = Array(path.dropFirst())
+    private func _press(_ node: L2Node) {
         switch node {
         case .selected(let n):
-            _press(n, rest)
+            switch n {
+            case .button(let s, let a):
+                a()
+            default:
+                // not sure what to do here
+                _press(n)
+            }
         case .array(let arr):
             for n in arr {
-                _press(n, rest)
+                _press(n)
             }
-        case .button(_, let a):
-            a()
-        case .text:
+        case .button, .text:
             ()
         }
     }
